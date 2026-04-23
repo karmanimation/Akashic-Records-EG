@@ -146,16 +146,16 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
 
                 <div style={{ marginTop: 8 }}>
   <input type="file" accept="image/*" onChange={handleFoto}
-    style={{ display: 'none' }} id="foto-input" />
-  <label htmlFor="foto-input" style={{
-    display: 'block', width: '100%', background: 'transparent',
-    border: '1px solid #1a1d35', color: '#3a4560',
-    fontFamily: 'Share Tech Mono,monospace', fontSize: 8,
-    letterSpacing: 1, padding: '6px', borderRadius: 2, cursor: 'pointer',
-    textAlign: 'center', transition: 'all 0.2s'
-  }}>
-    {uploadando ? 'ENVIANDO...' : f.fotoURL ? 'ALTERAR FOTO' : '+ UPLOAD DE FOTO'}
-  </label>
+  style={{ display: 'none' }} id="foto-input" />
+<button onClick={() => document.getElementById('foto-input').click()} style={{
+  marginTop: 8, width: '100%', background: 'transparent',
+  border: '1px solid #1a1d35', color: '#3a4560',
+  fontFamily: 'Share Tech Mono,monospace', fontSize: 8,
+  letterSpacing: 1, padding: '6px', borderRadius: 2, cursor: 'pointer',
+  textAlign: 'center', transition: 'all 0.2s'
+}}>
+  {uploadando ? 'ENVIANDO...' : f.fotoURL ? 'ALTERAR FOTO' : '+ UPLOAD DE FOTO'}
+</button>
 </div>
               </div>
 
