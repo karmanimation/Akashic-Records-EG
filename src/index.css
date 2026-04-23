@@ -1,16 +1,17 @@
 /* src/index.css */
 :root {
-  --bg: #050508;
-  --bg-card: #0d0e18;
-  --border: #1a1d35;
+  --bg: #0c0d14;
+  --bg-card: #111220;
+  --border: #1e2240;
   --border-glow: #2a3060;
   --gold: #c8a96e;
-  --gold-dim: #7a6035;
+  --gold-dim: #8a6835;
   --cyan: #4a9aba;
   --red: #9a3030;
   --purple: #6a3a8a;
-  --text: #d8dae8;
-  --text-dim: #4a5070;
+  --text: #e0e2f0;
+  --text-dim: #7a849a;
+  --text-label: #8a94aa;
   --f-display: 'Cinzel', serif;
   --f-body: 'Crimson Text', serif;
   --f-mono: 'Share Tech Mono', monospace;
@@ -28,17 +29,41 @@ body {
   min-height: 100vh;
 }
 
+/* ── Fundo estrelado com 3 estrelas especiais ── */
 body::before {
   content: '';
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(1px 1px at 15% 25%, rgba(200,169,110,0.35) 0%, transparent 100%),
-    radial-gradient(1px 1px at 75% 8%, rgba(74,154,186,0.25) 0%, transparent 100%),
-    radial-gradient(1px 1px at 45% 65%, rgba(200,169,110,0.2) 0%, transparent 100%),
-    radial-gradient(1px 1px at 88% 45%, rgba(200,200,200,0.12) 0%, transparent 100%),
-    radial-gradient(1px 1px at 30% 80%, rgba(74,154,186,0.18) 0%, transparent 100%),
-    radial-gradient(1px 1px at 60% 90%, rgba(200,169,110,0.15) 0%, transparent 100%),
-    radial-gradient(ellipse at 50% 0%, rgba(20,15,40,0.9) 0%, transparent 55%);
+    /* 3 estrelas dos 3 Mundos — grandes e brilhantes */
+    radial-gradient(3px 3px at 22% 18%, rgba(255,255,255,1) 0%, rgba(255,255,255,0.4) 40%, transparent 100%),
+    radial-gradient(3px 3px at 67% 72%, rgba(200,169,110,1) 0%, rgba(200,169,110,0.4) 40%, transparent 100%),
+    radial-gradient(3px 3px at 85% 30%, rgba(74,154,186,1) 0%, rgba(74,154,186,0.4) 40%, transparent 100%),
+    /* halos das 3 estrelas especiais */
+    radial-gradient(12px 12px at 22% 18%, rgba(255,255,255,0.15) 0%, transparent 100%),
+    radial-gradient(12px 12px at 67% 72%, rgba(200,169,110,0.15) 0%, transparent 100%),
+    radial-gradient(12px 12px at 85% 30%, rgba(74,154,186,0.15) 0%, transparent 100%),
+    /* estrelas médias */
+    radial-gradient(2px 2px at 8% 25%, rgba(200,169,110,0.8) 0%, transparent 100%),
+    radial-gradient(2px 2px at 35% 60%, rgba(74,154,186,0.7) 0%, transparent 100%),
+    radial-gradient(2px 2px at 55% 15%, rgba(255,255,255,0.7) 0%, transparent 100%),
+    radial-gradient(2px 2px at 78% 55%, rgba(200,169,110,0.6) 0%, transparent 100%),
+    radial-gradient(2px 2px at 92% 80%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(2px 2px at 15% 85%, rgba(74,154,186,0.6) 0%, transparent 100%),
+    radial-gradient(2px 2px at 48% 90%, rgba(200,169,110,0.5) 0%, transparent 100%),
+    /* estrelas pequenas */
+    radial-gradient(1px 1px at 5% 45%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 28% 35%, rgba(200,169,110,0.45) 0%, transparent 100%),
+    radial-gradient(1px 1px at 42% 48%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 62% 38%, rgba(74,154,186,0.45) 0%, transparent 100%),
+    radial-gradient(1px 1px at 73% 88%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 12%, rgba(200,169,110,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 18% 68%, rgba(255,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 50% 55%, rgba(200,169,110,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 60%, rgba(74,154,186,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 92%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    /* gradiente de profundidade */
+    radial-gradient(ellipse at 50% 0%, rgba(25,20,50,0.7) 0%, transparent 55%),
+    radial-gradient(ellipse at 0% 100%, rgba(10,20,45,0.5) 0%, transparent 50%);
 }
 
 #root { position: relative; z-index: 1; }
@@ -47,8 +72,9 @@ body::before {
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 2px; }
 
+/* ── Inputs ── */
 input, select, textarea {
-  background: rgba(5,5,12,0.9);
+  background: rgba(8,9,18,0.9);
   border: 1px solid var(--border);
   color: var(--text);
   font-family: var(--f-body);
@@ -61,13 +87,54 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus {
   border-color: var(--gold-dim);
-  box-shadow: 0 0 0 1px rgba(200,169,110,0.1);
+  box-shadow: 0 0 0 1px rgba(200,169,110,0.12);
 }
-select option { background: #0d0e18; }
+select option { background: #111220; }
 textarea { resize: vertical; }
+
+/* ── Tipografia global melhorada ── */
+/* Labels de campo */
+.campo-label {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-label);
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  display: block;
+}
+
+/* Títulos de seção */
+.titulo-sec {
+  font-family: var(--f-display);
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--gold);
+}
+
+/* Labels gerais pequenos — mais visíveis */
+[style*="fontSize: 8"], [style*="fontSize: 9"] {
+  font-size: 11px !important;
+}
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .anim { animation: fadeUp 0.35s ease forwards; }
+
+/* ── Animação das 3 estrelas especiais ── */
+@keyframes pulse-star {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+body::after {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(4px 4px at 22% 18%, rgba(255,255,255,0.9) 0%, transparent 100%),
+    radial-gradient(4px 4px at 67% 72%, rgba(200,169,110,0.9) 0%, transparent 100%),
+    radial-gradient(4px 4px at 85% 30%, rgba(74,154,186,0.9) 0%, transparent 100%);
+  animation: pulse-star 4s ease-in-out infinite;
+}

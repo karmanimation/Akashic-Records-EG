@@ -13,9 +13,9 @@ export function Painel({ children, style = {} }) {
 export function Titulo({ children, cor = '#c8a96e' }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-      <div style={{ width: 16, height: 1, background: cor, opacity: 0.5 }} />
-      <div style={{ fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: 3, color: cor, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{children}</div>
-      <div style={{ flex: 1, height: 1, background: `linear-gradient(to right,${cor}44,transparent)` }} />
+      <div style={{ width: 16, height: 1, background: cor, opacity: 0.6 }} />
+      <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 3, color: cor, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{children}</div>
+      <div style={{ flex: 1, height: 1, background: `linear-gradient(to right,${cor}55,transparent)` }} />
     </div>
   )
 }
@@ -23,7 +23,7 @@ export function Titulo({ children, cor = '#c8a96e' }) {
 export function Campo({ label, children, style = {} }) {
   return (
     <div style={style}>
-      <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, color: '#3a4560', textTransform: 'uppercase', marginBottom: 5 }}>{label}</div>
+      <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 2, color: '#8a94aa', textTransform: 'uppercase', marginBottom: 5 }}>{label}</div>
       {children}
     </div>
   )
