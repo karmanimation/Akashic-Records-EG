@@ -14,8 +14,7 @@ const ABAS = [
 
 export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, onVoltar }) {
   const [aba, setAba] = useState('identidade')
-  const [editandoFoto, setEditandoFoto] = useState(false)
-  const [urlTemp, setUrlTemp] = useState('')
+  const [uploadando, setUploadando] = useState(false)
 
   const f = ficha
   const vidaMax = (f.focos.Vigor * 5) + (f.reservas?.vida?.bonus || 0) + 10
@@ -32,11 +31,32 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
   const setReservaBonus = (tipo, v) => setFicha(p => ({ ...p, reservas: { ...p.reservas, [tipo]: { ...p.reservas[tipo], bonus: v } } }))
   const setPericia = (per, v) => setFicha(p => ({ ...p, pericias: { ...p.pericias, [per]: Math.max(0, Math.min(10, v)) } }))
 
-  const confirmarFoto = () => {
-    if (urlTemp.trim()) set('fotoURL', urlTemp.trim())
-    setEditandoFoto(false)
-    setUrlTemp('')
+  const handleFoto = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  if (file.size > 1024 * 1024) {
+    alert('Imagem muito grande. Use até 1MB.')
+    return
   }
+  setUploadando(true)
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      const max = 400
+      let w = img.width, h = img.height
+      if (w > h) { if (w > max) { h = h * max / w; w = max } }
+      else { if (h > max) { w = w * max / h; h = max } }
+      canvas.width = w; canvas.height = h
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+      set('fotoURL', canvas.toDataURL('image/jpeg', 0.8))
+      setUploadando(false)
+    }
+    img.src = ev.target.result
+  }
+  reader.readAsDataURL(file)
+}
 
   const addCap = tipo => setFicha(p => ({ ...p, [tipo]: [...(p[tipo] || []), { id: Date.now(), nome: '', desc: '' }] }))
   const remCap = (tipo, id) => setFicha(p => ({ ...p, [tipo]: p[tipo].filter(x => x.id !== id) }))
@@ -124,45 +144,19 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                   }
                 </div>
 
-                {/* Campo URL */}
-                {editandoFoto ? (
-                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <input
-                      value={urlTemp}
-                      onChange={e => setUrlTemp(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && confirmarFoto()}
-                      placeholder="Cole a URL da imagem..."
-                      autoFocus
-                      style={{ fontSize: 11 }}
-                    />
-                    <div style={{ display: 'flex', gap: 5 }}>
-                      <button onClick={confirmarFoto} style={{
-                        flex: 1, background: 'rgba(200,169,110,0.08)', border: '1px solid #c8a96e55',
-                        color: '#c8a96e', fontFamily: 'Share Tech Mono,monospace', fontSize: 9,
-                        letterSpacing: 1, padding: '5px', borderRadius: 2, cursor: 'pointer'
-                      }}>OK</button>
-                      <button onClick={() => { setEditandoFoto(false); setUrlTemp('') }} style={{
-                        flex: 1, background: 'transparent', border: '1px solid #2a1a1a',
-                        color: '#6a3030', fontFamily: 'Share Tech Mono,monospace', fontSize: 9,
-                        letterSpacing: 1, padding: '5px', borderRadius: 2, cursor: 'pointer'
-                      }}>✕</button>
-                    </div>
-                    <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 7, color: '#2a3050', letterSpacing: 1, lineHeight: 1.5 }}>
-                      IMGUR · IMGBB · DISCORD
-                    </div>
-                  </div>
-                ) : (
-                  <button onClick={() => { setEditandoFoto(true); setUrlTemp(f.fotoURL || '') }} style={{
-                    marginTop: 8, width: '100%', background: 'transparent',
-                    border: '1px solid #1a1d35', color: '#3a4560',
-                    fontFamily: 'Share Tech Mono,monospace', fontSize: 8,
-                    letterSpacing: 1, padding: '6px', borderRadius: 2, cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                    onMouseEnter={e => { e.target.style.borderColor = '#c8a96e55'; e.target.style.color = '#c8a96e' }}
-                    onMouseLeave={e => { e.target.style.borderColor = '#1a1d35'; e.target.style.color = '#3a4560' }}
-                  >{f.fotoURL ? 'ALTERAR URL' : '+ URL DA FOTO'}</button>
-                )}
+                <div style={{ marginTop: 8 }}>
+  <input type="file" accept="image/*" onChange={handleFoto}
+    style={{ display: 'none' }} id="foto-input" />
+  <label htmlFor="foto-input" style={{
+    display: 'block', width: '100%', background: 'transparent',
+    border: '1px solid #1a1d35', color: '#3a4560',
+    fontFamily: 'Share Tech Mono,monospace', fontSize: 8,
+    letterSpacing: 1, padding: '6px', borderRadius: 2, cursor: 'pointer',
+    textAlign: 'center', transition: 'all 0.2s'
+  }}>
+    {uploadando ? 'ENVIANDO...' : f.fotoURL ? 'ALTERAR FOTO' : '+ UPLOAD DE FOTO'}
+  </label>
+</div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
