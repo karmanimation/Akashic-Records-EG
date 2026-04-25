@@ -5,12 +5,13 @@ import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyAV-l08jrFh-CbDNnOvucYJepcVTOPUrHg",
+  authDomain: "entregalaxias369.firebaseapp.com",
+  projectId: "entregalaxias369",
+  storageBucket: "entregalaxias369.firebasestorage.app",
+  messagingSenderId: "1042139733115",
+  appId: "1:1042139733115:web:27db1af4e44e07321f56de",
+  measurementId: "G-HH07FG84JD"
 }
 
 const app = initializeApp(firebaseConfig)
