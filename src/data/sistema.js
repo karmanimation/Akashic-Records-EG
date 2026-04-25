@@ -49,11 +49,7 @@ export const CLASSES = {
       { nome: "Último Fôlego", desc: "Quando estiver prestes a sucumbir à loucura, gaste 2 PE para recuperar BREVEMENTE a consciência e realizar uma ação para se salvar.\n(Requisito: Vigor 3)" },
       { nome: "Ataque Especial", desc: "Gaste 1 PE para ter +4 de DANO ou +4 nas rolagens de acerto. (Disponível a partir do Nível 10)" },
     ],
-    passivas: [
-      { nome: "Potente", desc: "Recebe +3 de DANO adicional usando armas corpo a corpo." },
-      { nome: "Pele Grossa", desc: "Reduz 1 ponto de qualquer dano recebido." },
-      { nome: "Marcado pela Guerra", desc: "Começa cada cena com +1d6 de PV temporários." },
-    ]
+    passivas: []
   },
   Especialista: {
     trilhas: ["Armamentista", "Técnico", "Médico", "Negociador", "Invocador"],
@@ -84,8 +80,6 @@ export const CLASSES = {
     ],
     passivas: [
       { nome: "Na Trilha Certa (Passiva)", desc: "Ao ter sucesso em testes de perícias relacionadas à investigação, o bônus acumulado persiste até o final da cena." },
-      { nome: "Olho Clínico", desc: "Pode identificar fraquezas e doenças com um olhar." },
-      { nome: "Adaptação Rápida", desc: "Reduz em 1 turno o tempo para se adaptar a novos ambientes." },
     ]
   },
   Bruxo: {
@@ -111,12 +105,11 @@ export const CLASSES = {
       { nome: "Tatuagem Ritualista", desc: "Marque símbolos elementais na pele para aprisionar magias, armas e itens sobrenaturais, facilitando a execução de rituais e o transporte de itens.\n(Requisito: Domínio 3)" },
       { nome: "Transcender", desc: "Permite escolher um PODER SOBRENATURAL do seu Elemento, sem ganhar pontos de SANIDADE nesse nível." },
       { nome: "Treinamento em Perícias", desc: "Escolha DUAS perícias para se tornar Treinado, ganhando +5 pontos. Ao atingir o Nível 35, torna-se Veterano nessas perícias, ganhando +10 pontos." },
-    ],
-    passivas: [
       { nome: "Especialista em Elemento", desc: "Escolha um elemento. Sua resistência a esse elemento aumenta em +5." },
-      { nome: "Envolto em Mistério", desc: "Recebe +5 em Enganação e Intimidação contra pessoas não treinadas em Ocultismo. O MESTRE define os limites.\n(Requisito: Domínio 3)" },
+      { nome: "Envolto em Mistério", desc: "Sua aparência e postura permitem assustar e manipular pessoas ignorantes e supersticiosas. Recebe +5 em Enganação e Intimidação contra pessoas não treinadas em Ocultismo. O MESTRE define os limites.\n(Requisito: Domínio 3)" },
       { nome: "Intuição Sobrenatural", desc: "Sempre que auxiliar um aliado em Investigação, ele soma Intelecto + Domínio do Invocador na rolagem.\n(Requisito: Domínio 2)" },
-    ]
+    ],
+    passivas: []
   },
   Espião: {
     trilhas: ["Assassino", "Atirador de Elite", "Tranqueira", "Assaltante", "Invocador"],

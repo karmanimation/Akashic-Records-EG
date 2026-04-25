@@ -499,9 +499,61 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
               </div>
             </Painel>
 
+            {/* Proficiências */}
             <Painel>
-              <Titulo>História & Anotações</Titulo>
-              <textarea value={f.notas} onChange={e => set('notas', e.target.value)} rows={5} placeholder="Backstory, vínculos, segredos..." />
+              <Titulo>Proficiências</Titulo>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2, marginBottom: 8 }}>ARMAS</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {['Armas Leves', 'Armas Médias', 'Armas Táticas', 'Armas Pesadas'].map(p => {
+                      const ativo = (f.proficiencias || []).includes(p)
+                      return (
+                        <button key={p} onClick={() => {
+                          const atual = f.proficiencias || []
+                          set('proficiencias', ativo ? atual.filter(x => x !== p) : [...atual, p])
+                        }} style={{
+                          background: ativo ? 'rgba(200,169,110,0.15)' : 'transparent',
+                          border: `1px solid ${ativo ? '#c8a96e' : '#2a3050'}`,
+                          color: ativo ? '#c8a96e' : '#5a6580',
+                          fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1,
+                          padding: '6px 14px', borderRadius: 2, cursor: 'pointer', transition: 'all 0.2s'
+                        }}>{p}</button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2, marginBottom: 8 }}>ARMADURAS</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {['Armaduras Leves', 'Armaduras Médias', 'Armaduras Pesadas'].map(p => {
+                      const ativo = (f.proficiencias || []).includes(p)
+                      return (
+                        <button key={p} onClick={() => {
+                          const atual = f.proficiencias || []
+                          set('proficiencias', ativo ? atual.filter(x => x !== p) : [...atual, p])
+                        }} style={{
+                          background: ativo ? 'rgba(74,154,186,0.15)' : 'transparent',
+                          border: `1px solid ${ativo ? '#4a9aba' : '#2a3050'}`,
+                          color: ativo ? '#4a9aba' : '#5a6580',
+                          fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1,
+                          padding: '6px 14px', borderRadius: 2, cursor: 'pointer', transition: 'all 0.2s'
+                        }}>{p}</button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            </Painel>
+
+            <Painel>
+              <Titulo>História & Backstory</Titulo>
+              <textarea value={f.notas} onChange={e => set('notas', e.target.value)} rows={5} placeholder="Backstory, vínculos, segredos, origem..." />
+            </Painel>
+
+            <Painel>
+              <Titulo cor="#4a9aba">Anotações de Sessão</Titulo>
+              <textarea value={f.anotacoesSessao || ''} onChange={e => set('anotacoesSessao', e.target.value)} rows={5} placeholder="Anotações importantes da sessão, objetivos, NPCs, informações relevantes..." />
             </Painel>
           </div>
         )}
@@ -639,9 +691,9 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                           placeholder="Nome..." style={{ fontFamily: 'Cinzel,serif', fontSize: 13, color: cor, opacity: item.automatica ? 0.8 : 1, cursor: item.automatica ? 'default' : undefined }} />
                         {!item.automatica && !bloq(key) && <BtnPerigo onClick={() => remCap(key, item.id)}>✕</BtnPerigo>}
                       </div>
-                      <textarea value={item.desc} onChange={e => updCap(key, item.id, 'desc', e.target.value)}
-                        disabled={item.automatica && bloq(key)}
-                        rows={2} placeholder="Descrição, efeito, custo em PE..." style={{ fontSize: 14, whiteSpace: 'pre-line' }} />
+                      <textarea value={item.desc} onChange={e => !item.automatica && updCap(key, item.id, 'desc', e.target.value)}
+                        disabled={item.automatica}
+                        rows={2} placeholder="Descrição, efeito, custo em PE..." style={{ fontSize: 14, whiteSpace: 'pre-line', cursor: item.automatica ? 'not-allowed' : undefined, opacity: item.automatica ? 0.75 : 1 }} />
                     </div>
                   ))}
                 </div>
