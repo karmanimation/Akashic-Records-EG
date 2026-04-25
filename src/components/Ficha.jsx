@@ -159,7 +159,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
 
   const addCapDoCatalogo = (tipo, item) => {
     if (bloq(tipo)) return
-    setFicha(p => ({ ...p, [tipo]: [...(p[tipo] || []), { id: Date.now(), nome: item.nome, desc: item.desc }] }))
+    setFicha(p => ({ ...p, [tipo]: [...(p[tipo] || []), { id: Date.now(), nome: item.nome, desc: item.desc, doCatalogo: true }] }))
     setCatalogoAberto(null)
   }
 
@@ -689,11 +689,12 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                         <input value={item.nome} onChange={e => updCap(key, item.id, 'nome', e.target.value)}
                           disabled={item.automatica}
                           placeholder="Nome..." style={{ fontFamily: 'Cinzel,serif', fontSize: 13, color: cor, opacity: item.automatica ? 0.8 : 1, cursor: item.automatica ? 'default' : undefined }} />
-                        {!item.automatica && !bloq(key) && <BtnPerigo onClick={() => remCap(key, item.id)}>✕</BtnPerigo>}
+                        {!item.automatica && !item.doCatalogo && !bloq(key) && <BtnPerigo onClick={() => remCap(key, item.id)}>✕</BtnPerigo>}
+                        {item.doCatalogo && !bloq(key) && <BtnPerigo onClick={() => remCap(key, item.id)}>✕</BtnPerigo>}
                       </div>
-                      <textarea value={item.desc} onChange={e => !item.automatica && updCap(key, item.id, 'desc', e.target.value)}
-                        disabled={item.automatica}
-                        rows={2} placeholder="Descrição, efeito, custo em PE..." style={{ fontSize: 14, whiteSpace: 'pre-line', cursor: item.automatica ? 'not-allowed' : undefined, opacity: item.automatica ? 0.75 : 1 }} />
+                      <textarea value={item.desc} onChange={e => (!item.automatica && !item.doCatalogo) && updCap(key, item.id, 'desc', e.target.value)}
+                        disabled={item.automatica || item.doCatalogo}
+                        rows={2} placeholder="Descrição, efeito, custo em PE..." style={{ fontSize: 14, whiteSpace: 'pre-line', cursor: (item.automatica || item.doCatalogo) ? 'not-allowed' : undefined, opacity: (item.automatica || item.doCatalogo) ? 0.75 : 1 }} />
                     </div>
                   ))}
                 </div>
