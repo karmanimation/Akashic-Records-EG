@@ -4,7 +4,6 @@ import { doc, setDoc, onSnapshot, collection } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { fichaInicial } from '../data/sistema'
 
-// Ficha de um jogador numa mesa específica
 export function useFicha(userId, mesaId) {
   const [ficha, setFicha] = useState(fichaInicial())
   const [salvando, setSalvando] = useState(false)
@@ -28,23 +27,24 @@ export function useFicha(userId, mesaId) {
     } finally { setSalvando(false) }
   }, [userId, mesaId])
 
-  return { ficha, setFicha, salvar, salvando, ultimoSalvo }
+  // Mestre desbloqueia um campo específico
+  const desbloquearCampo = useCallback(async (campo, desbloqueado) => {
+    if (!userId || !mesaId) return
+    const ref_ = doc(db, 'mesas', mesaId, 'fichas', userId)
+    await setDoc(ref_, {
+      camposBloqueados: { [campo]: !desbloqueado }
+    }, { merge: true })
+  }, [userId, mesaId])
+
+  return { ficha, setFicha, salvar, salvando, ultimoSalvo, desbloquearCampo }
 }
 
-// Todas as fichas de uma mesa (para o Mestre)
 export function useFichasMesa(mesaId) {
   const [fichas, setFichas] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!mesaId) return
-    const carregar = async () => {
-      const snap = await getDocs(collection(db, 'mesas', mesaId, 'fichas'))
-      setFichas(snap.docs.map(d => ({ uid: d.id, ...d.data() })))
-      setLoading(false)
-    }
-    carregar()
-    // Listener em tempo real
     return onSnapshot(collection(db, 'mesas', mesaId, 'fichas'), snap => {
       setFichas(snap.docs.map(d => ({ uid: d.id, ...d.data() })))
       setLoading(false)

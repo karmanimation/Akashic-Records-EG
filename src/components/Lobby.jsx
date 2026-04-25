@@ -3,8 +3,7 @@ import { useState } from 'react'
 import { Sigil, Painel, Titulo, BtnLink } from './UI'
 
 export default function Lobby({ user, mesas, criarMesa, entrarMesa, onSelecionarMesa, logout }) {
-  const [view, setView] = useState('lista')
-const [nomeMesa, setNomeMesa] = useState('')
+  const [view, setView] = useState('lista') // lista | criar | entrar  const [nomeMesa, setNomeMesa] = useState('')
   const [codigo, setCodigo] = useState('')
   const [codigoCriado, setCodigoCriado] = useState(null)
   const [erro, setErro] = useState(null)

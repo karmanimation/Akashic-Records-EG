@@ -1,6 +1,6 @@
 // src/components/Ficha.jsx
 import { useState } from 'react'
-import { CLASSES, PERICIAS, GENESES, ELEMENTOS, TIPOS_ARMA, CATALOGO_ARMAS, CATALOGO_PODERES, GRAUS_AMEACA, CARGA_POR_FORCA, fichaInicial } from '../data/sistema'
+import { CLASSES, PERICIAS, GENESES, ELEMENTOS, TIPOS_ARMA, CATALOGO_ARMAS, CATALOGO_MAGIAS, CATALOGO_PODERES, GRAUS_AMEACA, CARGA_POR_FORCA, CAPACIDADES_AUTOMATICAS, ACESSORIOS_ARMA, TIPOS_MUNICAO } from '../data/sistema'
 import { Painel, Titulo, Campo, Grid2, Grid3, Barra, Tag, BtnLink, BtnPerigo } from './UI'
 
 const ABAS = [
@@ -14,7 +14,6 @@ const ABAS = [
 
 function calcularEstagio(focos) {
   const vals = Object.values(focos)
-  const min = Math.min(...vals)
   if (vals.some(v => v >= 11)) return 3
   if (vals.some(v => v >= 6)) return 2
   return 1
@@ -24,52 +23,92 @@ function calcularCargaMax(forca) {
   return CARGA_POR_FORCA[forca] || 1
 }
 
-function calcularPesoTotal(armas) {
-  return (armas || []).reduce((total, a) => total + (Number(a.espaco) || 0), 0)
+// Verifica se pode aumentar um foco
+function podeAumentar(focos, attr) {
+  const val = focos[attr]
+  const outros = Object.entries(focos).filter(([k]) => k !== attr).map(([, v]) => v)
+  if (val >= 5 && outros.some(v => v < 5)) return false
+  if (val >= 10 && outros.some(v => v < 10)) return false
+  if (val >= 15) return false
+  return true
+}
+
+// Verifica se um campo está bloqueado para o jogador
+function isBloqueado(ficha, campo) {
+  if (!ficha.finalizada) return false
+  if (ficha.camposBloqueados?.[campo] === false) return false // Mestre liberou
+  return true
 }
 
 export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, onVoltar }) {
   const [aba, setAba] = useState('identidade')
   const [uploadando, setUploadando] = useState(false)
-  const [catalogoAberto, setCatalogoAberto] = useState(null) // {tipo, categoria}
+  const [catalogoAberto, setCatalogoAberto] = useState(null)
   const [catalogoArmaAberto, setCatalogoArmaAberto] = useState(false)
   const [categoriaArma, setCategoriaArma] = useState('Leve')
+  const [confirmandoFinalizar, setConfirmandoFinalizar] = useState(false)
 
   const f = ficha
+  const bloq = (campo) => isBloqueado(ficha, campo)
   const estagio = calcularEstagio(f.focos)
   const cargaMax = calcularCargaMax(f.focos.Força)
-  const pesoAtual = calcularPesoTotal(f.armas)
+  const pesoArmas = (f.armas || []).reduce((t, a) => t + (Number(a.espaco) || 0), 0)
+  const pesoInventario = (f.inventario || []).reduce((t, i) => t + (Number(i.peso) || 0) * (Number(i.qtd) || 1), 0)
+  const pesoAtual = pesoArmas + pesoInventario
   const statusTotal = Object.values(f.focos).reduce((a, b) => a + b, 0)
   const estamina = f.focos.Força + f.focos.Vigor
   const reacao = f.focos.Agilidade + f.focos.Domínio
-
-  // Verificar se pode aumentar um foco
-  const podeAumentarFoco = (attr, val) => {
-    const outros = Object.entries(f.focos).filter(([k]) => k !== attr).map(([, v]) => v)
-    if (val >= 5 && outros.some(v => v < 5)) return false // todos precisam estar em 5 antes de passar para 6
-    if (val >= 10 && outros.some(v => v < 10)) return false // todos precisam estar em 10 antes de passar para 11
-    if (val >= 15) return false
-    return true
-  }
+  const corEstagio = estagio === 3 ? '#9a3030' : estagio === 2 ? '#4a9aba' : '#c8a96e'
 
   const set = (k, v) => setFicha(p => ({ ...p, [k]: v }))
   const setNested = (obj, k, v) => setFicha(p => ({ ...p, [obj]: { ...p[obj], [k]: v } }))
+
+  const selecionarClasse = (novaClasse) => {
+    if (bloq('classe')) return
+    const base = CAPACIDADES_AUTOMATICAS[novaClasse]?.base || { habilidades: [], passivas: [] }
+    setFicha(p => ({
+      ...p, classe: novaClasse, trilha: '',
+      habilidades: [...(p.habilidades || []).filter(h => !h.automatica), ...base.habilidades.map(h => ({ id: Date.now() + Math.random(), nome: h.nome, desc: h.desc, automatica: true }))],
+      passivas: [...(p.passivas || []).filter(h => !h.automatica), ...base.passivas.map(h => ({ id: Date.now() + Math.random(), nome: h.nome, desc: h.desc, automatica: true }))]
+    }))
+  }
+
+  const selecionarTrilha = (novaTrilha) => {
+    if (bloq('trilha')) return
+    const trilhaData = CAPACIDADES_AUTOMATICAS[f.classe]?.trilhas?.[novaTrilha]
+    setFicha(p => ({
+      ...p, trilha: novaTrilha,
+      passivas: [
+        ...(p.passivas || []).filter(h => !h.deTrilha),
+        ...(trilhaData?.nivel30 ? [{ id: Date.now() + Math.random(), nome: trilhaData.nivel30.nome, desc: trilhaData.nivel30.desc, automatica: true, deTrilha: true }] : [])
+      ]
+    }))
+  }
+
   const setFoco = (attr, v) => {
-    const atual = f.focos[attr]
-    if (v > atual && !podeAumentarFoco(attr, atual)) return
+    if (bloq('focos')) return
+    if (v > f.focos[attr] && !podeAumentar(f.focos, attr)) return
     const novo = Math.max(0, Math.min(15, v))
     setFicha(p => ({ ...p, focos: { ...p.focos, [attr]: novo } }))
   }
+
   const setReserva = (tipo, campo, v) => setFicha(p => ({
     ...p, reservas: { ...p.reservas, [tipo]: { ...p.reservas[tipo], [campo]: Number(v) } }
   }))
-  const setPericia = (per, v) => setFicha(p => ({ ...p, pericias: { ...p.pericias, [per]: Math.max(0, v) } }))
+
+  const setPericia = (per, v) => {
+    if (bloq('pericias')) return
+    setFicha(p => ({ ...p, pericias: { ...p.pericias, [per]: Math.max(0, v) } }))
+  }
 
   const toggleElemento = (nome) => {
+    if (bloq('elementos')) return
     const el = ELEMENTOS.find(e => e.nome === nome)
     if (el?.bloqueado) return
     const atual = f.elementos || []
     if (atual.includes(nome)) {
+      // Só pode tirar se não finalizado
+      if (f.finalizada) return
       setFicha(p => ({ ...p, elementos: atual.filter(e => e !== nome) }))
     } else {
       setFicha(p => ({ ...p, elementos: [...atual, nome] }))
@@ -102,9 +141,27 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
     reader.readAsDataURL(file)
   }
 
-  const addCap = tipo => setFicha(p => ({ ...p, [tipo]: [...(p[tipo] || []), { id: Date.now(), nome: '', desc: '' }] }))
-  const remCap = (tipo, id) => setFicha(p => ({ ...p, [tipo]: p[tipo].filter(x => x.id !== id) }))
-  const updCap = (tipo, id, k, v) => setFicha(p => ({ ...p, [tipo]: p[tipo].map(x => x.id === id ? { ...x, [k]: v } : x) }))
+  const addCap = (tipo) => {
+    if (bloq(tipo)) return
+    setFicha(p => ({ ...p, [tipo]: [...(p[tipo] || []), { id: Date.now(), nome: '', desc: '' }] }))
+  }
+  const remCap = (tipo, id) => {
+    const item = (ficha[tipo] || []).find(x => x.id === id)
+    if (item?.automatica) return // nunca remove automáticas
+    if (bloq(tipo)) return
+    setFicha(p => ({ ...p, [tipo]: p[tipo].filter(x => x.id !== id) }))
+  }
+  const updCap = (tipo, id, k, v) => {
+    const item = (ficha[tipo] || []).find(x => x.id === id)
+    if (item?.automatica && k === 'nome') return
+    setFicha(p => ({ ...p, [tipo]: p[tipo].map(x => x.id === id ? { ...x, [k]: v } : x) }))
+  }
+
+  const addCapDoCatalogo = (tipo, item) => {
+    if (bloq(tipo)) return
+    setFicha(p => ({ ...p, [tipo]: [...(p[tipo] || []), { id: Date.now(), nome: item.nome, desc: item.desc }] }))
+    setCatalogoAberto(null)
+  }
 
   const addArmaDosCatalogo = (arma) => {
     setFicha(p => ({
@@ -112,74 +169,147 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
         id: Date.now(), nome: arma.nome, tipo: categoriaArma,
         dano: arma.dano, pericia: arma.pericia, critico: arma.critico,
         municao: arma.municao, espaco: arma.espaco, alcance: arma.alcance,
-        grauAmeaca: 1
+        grauAmeaca: 1, tipoMunicao: 'Padrão', acessorios: []
       }]
     }))
     setCatalogoArmaAberto(false)
   }
-
   const addArmaManual = () => setFicha(p => ({
-    ...p, armas: [...(p.armas || []), { id: Date.now(), nome: '', tipo: '', dano: '', pericia: '', critico: '', municao: '', espaco: 0, alcance: '', grauAmeaca: 1 }]
+    ...p, armas: [...(p.armas || []), { id: Date.now(), nome: '', tipo: '', dano: '', pericia: '', critico: '', municao: '', espaco: 0, alcance: '', grauAmeaca: 1, tipoMunicao: 'Padrão', acessorios: [] }]
   }))
   const remArma = id => setFicha(p => ({ ...p, armas: p.armas.filter(a => a.id !== id) }))
   const updArma = (id, k, v) => setFicha(p => ({ ...p, armas: p.armas.map(a => a.id === id ? { ...a, [k]: v } : a) }))
 
-  const addCapDoCatalogo = (tipo, item) => {
-    setFicha(p => ({ ...p, [tipo]: [...(p[tipo] || []), { id: Date.now(), nome: item.nome, desc: item.desc }] }))
-    setCatalogoAberto(null)
-  }
-
-  const addItem = () => setFicha(p => ({ ...p, inventario: [...(p.inventario || []), { id: Date.now(), item: '', qtd: 1, desc: '' }] }))
+  const addItem = () => setFicha(p => ({ ...p, inventario: [...(p.inventario || []), { id: Date.now(), item: '', qtd: 1, peso: 0, desc: '' }] }))
   const remItem = id => setFicha(p => ({ ...p, inventario: p.inventario.filter(i => i.id !== id) }))
   const updItem = (id, k, v) => setFicha(p => ({ ...p, inventario: p.inventario.map(i => i.id === id ? { ...i, [k]: v } : i) }))
 
-  const corEstagio = estagio === 3 ? '#9a3030' : estagio === 2 ? '#4a9aba' : '#c8a96e'
+  const finalizarFicha = async () => {
+    const fichaFinalizada = { ...ficha, finalizada: true }
+    setFicha(fichaFinalizada)
+    await salvar(fichaFinalizada)
+    setConfirmandoFinalizar(false)
+  }
+
+  // Estilos de campo bloqueado
+  const inputStyle = (campo) => ({
+    fontFamily: bloq(campo) ? 'Cinzel,serif' : undefined,
+    opacity: bloq(campo) ? 0.7 : 1,
+    cursor: bloq(campo) ? 'not-allowed' : undefined,
+    background: bloq(campo) ? 'rgba(5,5,12,0.5)' : undefined,
+  })
+
+  const Cadeado = ({ campo }) => bloq(campo) ? (
+    <span title="Bloqueado — solicite ao Mestre para editar" style={{ fontSize: 10, color: '#5a3030', marginLeft: 6, cursor: 'help' }}>🔒</span>
+  ) : null
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 16px 60px', position: 'relative' }}>
 
+      {/* Modal confirmação finalizar */}
+      {confirmandoFinalizar && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#0d0e18', border: '1px solid #9a3030', borderRadius: 2, padding: 32, maxWidth: 420, width: '100%' }}>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 16, color: '#c8a96e', letterSpacing: 2, marginBottom: 12 }}>FINALIZAR FICHA</div>
+            <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: '#8a9ab0', lineHeight: 1.6, marginBottom: 20 }}>
+              Após finalizar, você <strong style={{ color: '#c8a96e' }}>não poderá modificar</strong> as escolhas de classe, trilha, gênese, elementos, atributos, perícias e capacidades sem a permissão do Mestre.<br /><br />
+              Tem certeza que a ficha está completa?
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={finalizarFicha} style={{ flex: 1, background: 'rgba(154,48,48,0.15)', border: '1px solid #9a3030', color: '#c05050', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>
+                SIM, FINALIZAR
+              </button>
+              <button onClick={() => setConfirmandoFinalizar(false)} style={{ flex: 1, background: 'transparent', border: '1px solid #2a3050', color: '#6a7090', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>
+                CANCELAR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Catálogo de Capacidades */}
       {catalogoAberto && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#0d0e18', border: '1px solid #1a1d35', borderRadius: 2, width: '100%', maxWidth: 600, maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #1a1d35', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontFamily: 'Cinzel,serif', fontSize: 14, color: '#c8a96e', letterSpacing: 2 }}>CATÁLOGO — {catalogoAberto.tipo.toUpperCase()}</div>
+          <div style={{ background: '#0d0e18', border: '1px solid #1a1d35', borderRadius: 2, width: '100%', maxWidth: 620, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid #1a1d35', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontFamily: 'Cinzel,serif', fontSize: 13, color: '#c8a96e', letterSpacing: 2 }}>
+                CATÁLOGO — {catalogoAberto.tipo.toUpperCase()}
+                {catalogoAberto.tipo === 'habilidades' && <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#4a5070', marginLeft: 8 }}>(gastam PE)</span>}
+                {catalogoAberto.tipo === 'passivas' && <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#4a5070', marginLeft: 8 }}>(não gastam PE)</span>}
+              </div>
               <button onClick={() => setCatalogoAberto(null)} style={{ background: 'transparent', border: 'none', color: '#5a6580', cursor: 'pointer', fontSize: 18 }}>✕</button>
             </div>
-            <div style={{ overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 7 }}>
               {/* Habilidades/Passivas da Classe */}
               {(catalogoAberto.tipo === 'habilidades' || catalogoAberto.tipo === 'passivas') && (
                 <>
                   <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2, marginBottom: 4 }}>CLASSE: {f.classe.toUpperCase()}</div>
                   {(CLASSES[f.classe]?.[catalogoAberto.tipo] || []).map((item, i) => (
-                    <div key={i} onClick={() => addCapDoCatalogo(catalogoAberto.tipo, item)} style={{ background: '#09090f', border: '1px solid #1a1d35', padding: 12, borderRadius: 2, cursor: 'pointer', transition: 'border-color 0.15s' }}
-                      onMouseEnter={e => e.currentTarget.style.borderColor = '#c8a96e44'}
-                      onMouseLeave={e => e.currentTarget.style.borderColor = '#1a1d35'}>
-                      <div style={{ fontFamily: 'Cinzel,serif', fontSize: 13, color: '#c8a96e', marginBottom: 4 }}>{item.nome}</div>
-                      <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 13, color: '#6a7090', lineHeight: 1.5 }}>{item.desc}</div>
+                    <div key={i} onClick={() => !bloq(catalogoAberto.tipo) && addCapDoCatalogo(catalogoAberto.tipo, item)}
+                      style={{ background: '#09090f', border: '1px solid #1a1d35', padding: '10px 12px', borderRadius: 2, cursor: bloq(catalogoAberto.tipo) ? 'not-allowed' : 'pointer', transition: 'border-color 0.15s' }}
+                      onMouseEnter={e => !bloq(catalogoAberto.tipo) && (e.currentTarget.style.borderColor = '#c8a96e44')}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor = '#1a1d35')}>
+                      <div style={{ fontFamily: 'Cinzel,serif', fontSize: 12, color: '#c8a96e', marginBottom: 4 }}>{item.nome}</div>
+                      <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 13, color: '#6a7090', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{item.desc}</div>
                     </div>
                   ))}
                 </>
               )}
-              {/* Magias/Poderes por Elemento */}
-              {(catalogoAberto.tipo === 'magias' || catalogoAberto.tipo === 'poderes') && (
+              {/* Magias por Elemento */}
+              {catalogoAberto.tipo === 'magias' && (
                 <>
                   {(f.elementos || []).length === 0 && (
                     <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#3a4560', textAlign: 'center', padding: 20 }}>Nenhum elemento selecionado na aba Identidade.</div>
                   )}
-                  {(f.elementos || []).map(elem => (
-                    <div key={elem}>
-                      <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#4a9aba', letterSpacing: 2, margin: '8px 0 4px' }}>ELEMENTO: {elem.toUpperCase()}</div>
-                      {(CATALOGO_PODERES[elem] || [{ nome: elem, desc: `Poder do elemento ${elem} — a ser definido.` }]).map((item, i) => (
-                        <div key={i} onClick={() => addCapDoCatalogo(catalogoAberto.tipo, item)} style={{ background: '#09090f', border: '1px solid #1a1d35', padding: 12, borderRadius: 2, cursor: 'pointer', marginBottom: 6, transition: 'border-color 0.15s' }}
-                          onMouseEnter={e => e.currentTarget.style.borderColor = '#4a9aba44'}
-                          onMouseLeave={e => e.currentTarget.style.borderColor = '#1a1d35'}>
-                          <div style={{ fontFamily: 'Cinzel,serif', fontSize: 13, color: '#4a9aba', marginBottom: 4 }}>{item.nome}</div>
-                          <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 13, color: '#6a7090', lineHeight: 1.5 }}>{item.desc}</div>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
+                  {(f.elementos || []).map(elem => {
+                    const magiasPorCirculo = CATALOGO_MAGIAS[elem]
+                    if (!magiasPorCirculo) return null
+                    return (
+                      <div key={elem}>
+                        <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#4a9aba', letterSpacing: 2, margin: '10px 0 6px' }}>ELEMENTO: {elem.toUpperCase()}</div>
+                        {Object.entries(magiasPorCirculo).map(([circulo, lista]) => (
+                          <div key={circulo}>
+                            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#2a3050', letterSpacing: 1, margin: '6px 0 4px' }}>{circulo}</div>
+                            {lista.map((item, i) => (
+                              <div key={i} onClick={() => !bloq('magias') && addCapDoCatalogo('magias', item)}
+                                style={{ background: '#09090f', border: '1px solid #1a1d35', padding: '9px 12px', borderRadius: 2, cursor: bloq('magias') ? 'not-allowed' : 'pointer', marginBottom: 5, transition: 'border-color 0.15s' }}
+                                onMouseEnter={e => !bloq('magias') && (e.currentTarget.style.borderColor = '#4a9aba44')}
+                                onMouseLeave={e => (e.currentTarget.style.borderColor = '#1a1d35')}>
+                                <div style={{ fontFamily: 'Cinzel,serif', fontSize: 12, color: '#4a9aba', marginBottom: 3 }}>{item.nome}</div>
+                                <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 13, color: '#6a7090', lineHeight: 1.4 }}>{item.desc}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+              {/* Poderes por Elemento */}
+              {catalogoAberto.tipo === 'poderes' && (
+                <>
+                  {(f.elementos || []).length === 0 && (
+                    <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#3a4560', textAlign: 'center', padding: 20 }}>Nenhum elemento selecionado na aba Identidade.</div>
+                  )}
+                  {(f.elementos || []).map(elem => {
+                    const poderes = CATALOGO_PODERES[elem]
+                    if (!poderes) return null
+                    return (
+                      <div key={elem}>
+                        <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#9a3030', letterSpacing: 2, margin: '10px 0 6px' }}>ELEMENTO: {elem.toUpperCase()}</div>
+                        {poderes.map((item, i) => (
+                          <div key={i} onClick={() => !bloq('poderes') && addCapDoCatalogo('poderes', item)}
+                            style={{ background: '#09090f', border: '1px solid #1a1d35', padding: '9px 12px', borderRadius: 2, cursor: bloq('poderes') ? 'not-allowed' : 'pointer', marginBottom: 5, transition: 'border-color 0.15s' }}
+                            onMouseEnter={e => !bloq('poderes') && (e.currentTarget.style.borderColor = '#9a303044')}
+                            onMouseLeave={e => (e.currentTarget.style.borderColor = '#1a1d35')}>
+                            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 12, color: '#9a3030', marginBottom: 3 }}>{item.nome}</div>
+                            <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 13, color: '#6a7090', lineHeight: 1.4 }}>{item.desc}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
                 </>
               )}
             </div>
@@ -190,9 +320,9 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
       {/* Modal Catálogo de Armas */}
       {catalogoArmaAberto && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#0d0e18', border: '1px solid #1a1d35', borderRadius: 2, width: '100%', maxWidth: 700, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #1a1d35', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontFamily: 'Cinzel,serif', fontSize: 14, color: '#c8a96e', letterSpacing: 2 }}>CATÁLOGO DE ARMAS</div>
+          <div style={{ background: '#0d0e18', border: '1px solid #1a1d35', borderRadius: 2, width: '100%', maxWidth: 720, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid #1a1d35', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontFamily: 'Cinzel,serif', fontSize: 13, color: '#c8a96e', letterSpacing: 2 }}>CATÁLOGO DE ARMAS</div>
               <button onClick={() => setCatalogoArmaAberto(false)} style={{ background: 'transparent', border: 'none', color: '#5a6580', cursor: 'pointer', fontSize: 18 }}>✕</button>
             </div>
             <div style={{ display: 'flex', borderBottom: '1px solid #1a1d35', overflowX: 'auto' }}>
@@ -217,9 +347,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                 </thead>
                 <tbody>
                   {(CATALOGO_ARMAS[categoriaArma] || []).map((arma, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #0f1020' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(200,169,110,0.04)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <tr key={i} onMouseEnter={e => e.currentTarget.style.background = 'rgba(200,169,110,0.04)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} style={{ borderBottom: '1px solid #0f1020' }}>
                       <td style={{ fontFamily: 'Cinzel,serif', fontSize: 12, color: '#c8cdd8', padding: '8px' }}>{arma.nome}</td>
                       <td style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 11, color: '#9a3030', padding: '8px' }}>{arma.dano}</td>
                       <td style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 11, color: '#c8a96e', padding: '8px' }}>{arma.espaco}</td>
@@ -227,17 +355,10 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                       <td style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#6a7090', padding: '8px' }}>{arma.critico}</td>
                       <td style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#4a9aba', padding: '8px' }}>{arma.pericia}</td>
                       <td style={{ padding: '8px' }}>
-                        <button onClick={() => addArmaDosCatalogo(arma)} style={{
-                          background: 'rgba(200,169,110,0.08)', border: '1px solid rgba(200,169,110,0.3)',
-                          color: '#c8a96e', fontFamily: 'Share Tech Mono,monospace', fontSize: 9,
-                          padding: '4px 10px', borderRadius: 2, cursor: 'pointer'
-                        }}>+ ADD</button>
+                        <button onClick={() => addArmaDosCatalogo(arma)} style={{ background: 'rgba(200,169,110,0.08)', border: '1px solid rgba(200,169,110,0.3)', color: '#c8a96e', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, padding: '4px 10px', borderRadius: 2, cursor: 'pointer' }}>+ ADD</button>
                       </td>
                     </tr>
                   ))}
-                  {(CATALOGO_ARMAS[categoriaArma] || []).length === 0 && (
-                    <tr><td colSpan={7} style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#2a3050', textAlign: 'center', padding: 20 }}>Sem armas cadastradas nesta categoria.</td></tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -245,17 +366,11 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
         </div>
       )}
 
-      {/* Header fixo */}
-      <div style={{
-        borderBottom: '1px solid #1a1d35', padding: '16px 0',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-        position: 'sticky', top: 0, background: 'rgba(5,5,8,0.97)',
-        backdropFilter: 'blur(8px)', zIndex: 100, gap: 12
-      }}>
+      {/* ─── HEADER ─── */}
+      <div style={{ borderBottom: '1px solid #1a1d35', padding: '16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'sticky', top: 0, background: 'rgba(5,5,8,0.97)', backdropFilter: 'blur(8px)', zIndex: 100, gap: 12 }}>
         <div>
           <button onClick={onVoltar} style={{ background: 'transparent', border: 'none', color: '#6a7490', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, cursor: 'pointer', marginBottom: 4, padding: 0 }}
-            onMouseEnter={e => e.target.style.color = '#c8a96e'}
-            onMouseLeave={e => e.target.style.color = '#6a7490'}>← MESAS</button>
+            onMouseEnter={e => e.target.style.color = '#c8a96e'} onMouseLeave={e => e.target.style.color = '#6a7490'}>← MESAS</button>
           <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#6a7490', letterSpacing: 3, marginBottom: 3 }}>AKASHIC RECORDS · ENTRE GALÁXIAS</div>
           <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, fontWeight: 700, color: '#c8a96e', letterSpacing: 2 }}>{f.nome || 'SEM NOME'}</div>
           <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -263,6 +378,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
             {f.trilha && <Tag cor="#4a9aba">{f.trilha}</Tag>}
             {(f.elementos || []).map(el => <Tag key={el} cor="#6a3a8a">{el}</Tag>)}
             <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, color: corEstagio, background: `${corEstagio}15`, border: `1px solid ${corEstagio}44`, padding: '2px 8px', borderRadius: 2 }}>ESTÁGIO {estagio}</span>
+            {f.finalizada && <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, color: '#5a8050', background: 'rgba(50,120,60,0.1)', border: '1px solid rgba(50,120,60,0.3)', padding: '2px 8px', borderRadius: 2 }}>✓ FINALIZADA</span>}
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
@@ -270,17 +386,22 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
             <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#7a849a', letterSpacing: 2 }}>NÍVEL</div>
             <div style={{ fontFamily: 'Cinzel,serif', fontSize: 30, fontWeight: 900, color: '#4a9aba', lineHeight: 1 }}>{f.nivel}</div>
           </div>
-          <button onClick={() => salvar(ficha)} disabled={salvando} style={{
-            background: 'transparent', border: `1px solid ${salvando ? '#2a3050' : '#c8a96e55'}`,
-            color: salvando ? '#3a4560' : '#c8a96e', fontFamily: 'Share Tech Mono,monospace',
-            fontSize: 9, letterSpacing: 2, padding: '6px 14px', cursor: 'pointer', borderRadius: 2
-          }}>{salvando ? '◌ SALVANDO' : '◈ SALVAR'}</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {!f.finalizada && (
+              <button onClick={() => setConfirmandoFinalizar(true)} style={{ background: 'rgba(154,48,48,0.1)', border: '1px solid #9a303055', color: '#c05050', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '6px 12px', cursor: 'pointer', borderRadius: 2 }}>
+                ◉ FINALIZAR
+              </button>
+            )}
+            <button onClick={() => salvar(ficha)} disabled={salvando} style={{ background: 'transparent', border: `1px solid ${salvando ? '#2a3050' : '#c8a96e55'}`, color: salvando ? '#3a4560' : '#c8a96e', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, padding: '6px 14px', cursor: 'pointer', borderRadius: 2 }}>
+              {salvando ? '◌ SALVANDO' : '◈ SALVAR'}
+            </button>
+          </div>
           {ultimoSalvo && <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#2a3050' }}>{ultimoSalvo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>}
         </div>
       </div>
 
       {/* Abas */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #1a1d35', overflowX: 'auto', position: 'sticky', top: 84, background: 'rgba(5,5,8,0.97)', backdropFilter: 'blur(8px)', zIndex: 99 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #1a1d35', overflowX: 'auto', position: 'sticky', top: 90, background: 'rgba(5,5,8,0.97)', backdropFilter: 'blur(8px)', zIndex: 99 }}>
         {ABAS.map(a => (
           <button key={a.id} onClick={() => setAba(a.id)} style={{
             background: 'transparent', border: 'none',
@@ -294,20 +415,18 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
 
       <div style={{ paddingTop: 20 }}>
 
-        {/* ── IDENTIDADE ── */}
+        {/* ─── IDENTIDADE ─── */}
         {aba === 'identidade' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} className="anim">
-            <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '155px 1fr', gap: 14 }}>
               <div>
                 <div style={{ width: '100%', aspectRatio: '3/4', background: '#09090f', border: '1px solid #1a1d35', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', clipPath: 'polygon(10px 0%,100% 0%,100% calc(100% - 10px),calc(100% - 10px) 100%,0% 100%,0% 10px)' }}>
-                  {f.fotoURL
-                    ? <img src={f.fotoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
-                    : <div style={{ textAlign: 'center', padding: 12 }}><div style={{ fontSize: 24, marginBottom: 4, opacity: 0.2 }}>◎</div><div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#2a3050', letterSpacing: 1 }}>SEM FOTO</div></div>
-                  }
+                  {f.fotoURL ? <img src={f.fotoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
+                    : <div style={{ textAlign: 'center', padding: 12 }}><div style={{ fontSize: 24, marginBottom: 4, opacity: 0.2 }}>◎</div><div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#2a3050', letterSpacing: 1 }}>SEM FOTO</div></div>}
                 </div>
                 <div style={{ marginTop: 8 }}>
                   <input type="file" accept="image/*" onChange={handleFoto} style={{ display: 'none' }} id="foto-input" />
-                  <button onClick={() => document.getElementById('foto-input').click()} style={{ marginTop: 0, width: '100%', background: 'transparent', border: '1px solid #1a1d35', color: '#3a4560', fontFamily: 'Share Tech Mono,monospace', fontSize: 8, letterSpacing: 1, padding: '6px', borderRadius: 2, cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}
+                  <button onClick={() => document.getElementById('foto-input').click()} style={{ width: '100%', background: 'transparent', border: '1px solid #1a1d35', color: '#3a4560', fontFamily: 'Share Tech Mono,monospace', fontSize: 8, letterSpacing: 1, padding: '6px', borderRadius: 2, cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}
                     onMouseEnter={e => { e.target.style.borderColor = '#c8a96e55'; e.target.style.color = '#c8a96e' }}
                     onMouseLeave={e => { e.target.style.borderColor = '#1a1d35'; e.target.style.color = '#3a4560' }}>
                     {uploadando ? 'ENVIANDO...' : f.fotoURL ? 'ALTERAR FOTO' : '+ UPLOAD DE FOTO'}
@@ -323,10 +442,8 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                       <Campo label="Raça"><input value={f.raca} onChange={e => set('raca', e.target.value)} placeholder="—" /></Campo>
                       <Campo label="Modificação"><input value={f.modificacao} onChange={e => set('modificacao', e.target.value)} placeholder="—" /></Campo>
                       <Campo label="Nível"><input type="number" min={1} max={300} value={f.nivel} onChange={e => set('nivel', Number(e.target.value))} /></Campo>
-                      <Campo label="Estágio">
-                        <div style={{ background: 'rgba(5,5,12,0.9)', border: `1px solid ${corEstagio}44`, padding: '8px 12px', borderRadius: 2, fontFamily: 'Cinzel,serif', fontSize: 18, color: corEstagio, textAlign: 'center' }}>
-                          {estagio}
-                        </div>
+                      <Campo label={<>Estágio <Cadeado campo="estagio" /></>}>
+                        <div style={{ background: 'rgba(5,5,12,0.9)', border: `1px solid ${corEstagio}44`, padding: '8px 12px', borderRadius: 2, fontFamily: 'Cinzel,serif', fontSize: 18, color: corEstagio, textAlign: 'center' }}>{estagio}</div>
                       </Campo>
                     </Grid2>
                   </div>
@@ -334,19 +451,19 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                 <Painel>
                   <Titulo>Classe & Origem</Titulo>
                   <Grid2>
-                    <Campo label="Classe">
-                      <select value={f.classe} onChange={e => set('classe', e.target.value)}>
+                    <Campo label={<>Classe <Cadeado campo="classe" /></>}>
+                      <select value={f.classe} onChange={e => selecionarClasse(e.target.value)} disabled={bloq('classe')} style={inputStyle('classe')}>
                         {Object.keys(CLASSES).map(c => <option key={c}>{c}</option>)}
                       </select>
                     </Campo>
-                    <Campo label="Trilha">
-                      <select value={f.trilha} onChange={e => set('trilha', e.target.value)}>
+                    <Campo label={<>Trilha <Cadeado campo="trilha" /></>}>
+                      <select value={f.trilha} onChange={e => selecionarTrilha(e.target.value)} disabled={bloq('trilha')} style={inputStyle('trilha')}>
                         <option value="">— Sem trilha —</option>
                         {CLASSES[f.classe]?.trilhas.map(t => <option key={t}>{t}</option>)}
                       </select>
                     </Campo>
-                    <Campo label="Gênese">
-                      <select value={f.genese} onChange={e => set('genese', e.target.value)}>
+                    <Campo label={<>Gênese <Cadeado campo="genese" /></>}>
+                      <select value={f.genese} onChange={e => !bloq('genese') && set('genese', e.target.value)} disabled={bloq('genese')} style={inputStyle('genese')}>
                         {GENESES.map(g => <option key={g}>{g}</option>)}
                       </select>
                     </Campo>
@@ -358,23 +475,22 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
               </div>
             </div>
 
-            {/* Elementos múltiplos */}
+            {/* Elementos */}
             <Painel>
-              <Titulo>Elementos</Titulo>
+              <Titulo>Elementos <Cadeado campo="elementos" /></Titulo>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {ELEMENTOS.map(el => {
                   const selecionado = (f.elementos || []).includes(el.nome) && el.nome !== 'Nenhum'
+                  const travado = el.bloqueado || (f.finalizada && selecionado)
                   return (
-                    <button key={el.nome} onClick={() => !el.bloqueado && toggleElemento(el.nome)}
-                      disabled={el.bloqueado}
+                    <button key={el.nome} onClick={() => !travado && toggleElemento(el.nome)} disabled={travado}
                       style={{
                         background: el.bloqueado ? 'rgba(150,30,30,0.08)' : selecionado ? 'rgba(106,58,138,0.2)' : 'transparent',
                         border: `1px solid ${el.bloqueado ? '#5a2020' : selecionado ? '#6a3a8a' : '#2a3050'}`,
                         color: el.bloqueado ? '#5a2020' : selecionado ? '#9a5aba' : '#5a6580',
                         fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1,
-                        padding: '6px 12px', borderRadius: 2, cursor: el.bloqueado ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s',
-                        textDecoration: el.bloqueado ? 'line-through' : 'none'
+                        padding: '6px 12px', borderRadius: 2, cursor: travado ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s', textDecoration: el.bloqueado ? 'line-through' : 'none'
                       }}>
                       {el.nome}{el.bloqueado ? ' 🔒' : ''}
                     </button>
@@ -390,48 +506,45 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
           </div>
         )}
 
-        {/* ── ATRIBUTOS ── */}
+        {/* ─── ATRIBUTOS ─── */}
         {aba === 'atributos' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} className="anim">
             <Painel>
-              <Titulo>Focos</Titulo>
-              <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 1, marginBottom: 12, lineHeight: 1.6 }}>
-                Estágio 1: 0–5 em todos · Estágio 2: todos em 5 para avançar um para 6 · Estágio 3: todos em 10 para avançar um para 11
+              <Titulo>Focos <Cadeado campo="focos" /></Titulo>
+              <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#5a6080', letterSpacing: 1, marginBottom: 12, lineHeight: 1.6 }}>
+                Estágio 1: 0–5 · Estágio 2: todos em 5 para avançar para 6 · Estágio 3: todos em 10 para avançar para 11
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {Object.entries(f.focos).map(([attr, val]) => {
-                  const podeAumentar = podeAumentarFoco(attr, val)
+                  const podeUp = podeAumentar(f.focos, attr)
                   return (
-                    <div key={attr} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <div style={{ width: 95, fontFamily: 'Cinzel,serif', fontSize: 12, letterSpacing: 2, color: '#8a9ab0' }}>{attr.toUpperCase()}</div>
-                      <div style={{ display: 'flex', gap: 7 }}>
+                    <div key={attr} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ width: 92, fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, color: '#8a9ab0' }}>{attr.toUpperCase()}</div>
+                      <div style={{ display: 'flex', gap: 5 }}>
                         {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(n => {
                           const ativo = val >= n
                           const cor = n <= 5 ? '#c8a96e' : n <= 10 ? '#4a9aba' : '#9a3030'
+                          const sz = n > 10 ? 20 : n > 5 ? 24 : 28
                           return (
-                            <button key={n} onClick={() => setFoco(attr, val === n ? n - 1 : n)} style={{
-                              width: n > 10 ? 22 : n > 5 ? 26 : 30,
-                              height: n > 10 ? 22 : n > 5 ? 26 : 30,
-                              borderRadius: '50%',
+                            <button key={n} onClick={() => setFoco(attr, val === n ? n - 1 : n)} disabled={bloq('focos')} style={{
+                              width: sz, height: sz, borderRadius: '50%',
                               border: `1px solid ${ativo ? cor : '#1a2030'}`,
                               background: ativo ? `${cor}20` : 'transparent',
                               color: ativo ? cor : '#1a2030',
-                              fontSize: n > 5 ? 10 : 14,
+                              fontSize: n > 5 ? 9 : 13,
                               boxShadow: ativo ? `0 0 8px ${cor}33` : 'none',
-                              cursor: 'pointer', transition: 'all 0.15s',
-                              opacity: !ativo && !podeAumentar && n === val + 1 ? 0.3 : 1
+                              cursor: bloq('focos') ? 'not-allowed' : 'pointer', transition: 'all 0.15s',
+                              opacity: !ativo && !podeUp && n === val + 1 ? 0.25 : 1
                             }}>{ativo ? '◆' : '◇'}</button>
                           )
                         })}
                       </div>
-                      <div style={{ fontFamily: 'Cinzel,serif', fontSize: 22, fontWeight: 700, color: val > 0 ? '#c8a96e' : '#2a3050', minWidth: 28, textAlign: 'center' }}>{val}</div>
+                      <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, fontWeight: 700, color: val > 0 ? '#c8a96e' : '#2a3050', minWidth: 26, textAlign: 'center' }}>{val}</div>
                     </div>
                   )
                 })}
                 <div style={{ paddingTop: 10, borderTop: '1px solid #1a1d35', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2 }}>
-                    STATUS TOTAL: <span style={{ color: '#4a9aba', fontSize: 13, fontFamily: 'Cinzel,serif' }}>{statusTotal}</span>
-                  </span>
+                  <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2 }}>STATUS TOTAL: <span style={{ color: '#4a9aba', fontSize: 13, fontFamily: 'Cinzel,serif' }}>{statusTotal}</span></span>
                   <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, color: corEstagio }}>ESTÁGIO {estagio}</span>
                 </div>
               </div>
@@ -440,24 +553,12 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
             <Painel>
               <Titulo>Reservas</Titulo>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {[
-                  { key: 'vida', label: 'PONTOS DE VIDA', cor: '#9a3030' },
-                  { key: 'esforco', label: 'PONTOS DE ESFORÇO', cor: '#4a9aba' },
-                  { key: 'sanidade', label: 'SANIDADE', cor: '#6a3a8a' },
-                ].map(r => (
+                {[{ key: 'vida', label: 'PONTOS DE VIDA', cor: '#9a3030' }, { key: 'esforco', label: 'PONTOS DE ESFORÇO', cor: '#4a9aba' }, { key: 'sanidade', label: 'SANIDADE', cor: '#6a3a8a' }].map(r => (
                   <div key={r.key}>
-                    <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: r.cor, letterSpacing: 2, marginBottom: 8 }}>{r.label}</div>
+                    <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: r.cor, letterSpacing: 2, marginBottom: 8 }}>{r.label}</div>
                     <Grid2>
-                      <Campo label="ATUAL">
-                        <input type="number" min={0} value={f.reservas[r.key].atual}
-                          onChange={e => setReserva(r.key, 'atual', e.target.value)}
-                          style={{ fontFamily: 'Cinzel,serif', fontSize: 18, textAlign: 'center', color: r.cor }} />
-                      </Campo>
-                      <Campo label="MÁXIMO">
-                        <input type="number" min={0} value={f.reservas[r.key].max}
-                          onChange={e => setReserva(r.key, 'max', e.target.value)}
-                          style={{ fontFamily: 'Cinzel,serif', fontSize: 18, textAlign: 'center' }} />
-                      </Campo>
+                      <Campo label="ATUAL"><input type="number" min={0} value={f.reservas[r.key].atual} onChange={e => setReserva(r.key, 'atual', e.target.value)} style={{ fontFamily: 'Cinzel,serif', fontSize: 18, textAlign: 'center', color: r.cor }} /></Campo>
+                      <Campo label="MÁXIMO"><input type="number" min={0} value={f.reservas[r.key].max} onChange={e => setReserva(r.key, 'max', e.target.value)} style={{ fontFamily: 'Cinzel,serif', fontSize: 18, textAlign: 'center' }} /></Campo>
                     </Grid2>
                     <div style={{ marginTop: 6, height: 4, background: '#0d0e18', border: '1px solid #1a1d35', borderRadius: 2, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${f.reservas[r.key].max > 0 ? Math.min(100, (f.reservas[r.key].atual / f.reservas[r.key].max) * 100) : 0}%`, background: r.cor, transition: 'width 0.3s' }} />
@@ -474,7 +575,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                   <div key={l} style={{ background: '#09090f', border: '1px solid #1a1d35', padding: 16, textAlign: 'center', borderRadius: 2 }}>
                     <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, color: c, marginBottom: 6 }}>{l}</div>
                     <div style={{ fontFamily: 'Cinzel,serif', fontSize: 38, fontWeight: 900, color: c, lineHeight: 1 }}>{v}</div>
-                <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#2a3050', marginTop: 5 }}>{d}</div>
+                    <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#2a3050', marginTop: 5 }}>{d}</div>
                   </div>
                 ))}
               </Grid2>
@@ -482,9 +583,10 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
           </div>
         )}
 
-        {/* ── PERÍCIAS ── */}
+        {/* ─── PERÍCIAS ─── */}
         {aba === 'pericias' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} className="anim">
+            {f.finalizada && <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#5a3030', letterSpacing: 1, padding: '8px 12px', background: 'rgba(90,30,30,0.1)', border: '1px solid #5a202055', borderRadius: 2 }}>🔒 Ficha finalizada — solicite ao Mestre para alterar perícias.</div>}
             {Object.entries(PERICIAS).map(([attr, lista]) => (
               <Painel key={attr}>
                 <Titulo>{attr} — Foco {f.focos[attr]}</Titulo>
@@ -497,9 +599,9 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         <span style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: val > 0 ? '#c8cdd8' : '#4a5070' }}>{per}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <button onClick={() => setPericia(per, val - 1)} style={{ background: 'transparent', border: '1px solid #1a2030', color: '#4a5070', width: 20, height: 20, borderRadius: 2, cursor: 'pointer', fontSize: 12 }}>−</button>
+                          <button onClick={() => setPericia(per, val - 1)} disabled={bloq('pericias')} style={{ background: 'transparent', border: '1px solid #1a2030', color: bloq('pericias') ? '#2a2a2a' : '#4a5070', width: 20, height: 20, borderRadius: 2, cursor: bloq('pericias') ? 'not-allowed' : 'pointer', fontSize: 12 }}>−</button>
                           <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 13, color: val > 0 ? '#c8a96e' : '#2a3050', minWidth: 28, textAlign: 'center', fontWeight: val > 0 ? 'bold' : 'normal' }}>{val > 0 ? `+${val}` : '—'}</div>
-                          <button onClick={() => setPericia(per, val + 1)} style={{ background: 'transparent', border: '1px solid #1a2030', color: '#4a5070', width: 20, height: 20, borderRadius: 2, cursor: 'pointer', fontSize: 12 }}>+</button>
+                          <button onClick={() => setPericia(per, val + 1)} disabled={bloq('pericias')} style={{ background: 'transparent', border: '1px solid #1a2030', color: bloq('pericias') ? '#2a2a2a' : '#4a5070', width: 20, height: 20, borderRadius: 2, cursor: bloq('pericias') ? 'not-allowed' : 'pointer', fontSize: 12 }}>+</button>
                         </div>
                       </div>
                     )
@@ -510,70 +612,77 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
           </div>
         )}
 
-        {/* ── CAPACIDADES ── */}
+        {/* ─── CAPACIDADES ─── */}
         {aba === 'capacidades' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} className="anim">
             {[
-              { key: 'habilidades', label: 'Habilidades', cor: '#c8a96e' },
-              { key: 'magias', label: 'Magias', cor: '#4a9aba' },
-              { key: 'passivas', label: 'Passivas', cor: '#6a3a8a' },
-              { key: 'poderes', label: 'Poderes', cor: '#9a3030' },
-            ].map(({ key, label, cor }) => (
+              { key: 'habilidades', label: 'Habilidades', sub: 'gastam PE', cor: '#c8a96e' },
+              { key: 'magias', label: 'Magias', sub: 'rituais elementais', cor: '#4a9aba' },
+              { key: 'passivas', label: 'Passivas', sub: 'não gastam PE', cor: '#6a3a8a' },
+              { key: 'poderes', label: 'Poderes', sub: 'sobrenaturais', cor: '#9a3030' },
+            ].map(({ key, label, sub, cor }) => (
               <Painel key={key}>
-                <Titulo cor={cor}>{label}</Titulo>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <div style={{ width: 14, height: 1, background: cor, opacity: 0.6 }} />
+                  <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 3, color: cor, textTransform: 'uppercase' }}>{label}</div>
+                  <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#3a4560', letterSpacing: 1 }}>· {sub}</div>
+                  <div style={{ flex: 1, height: 1, background: `linear-gradient(to right,${cor}55,transparent)` }} />
+                  <Cadeado campo={key} />
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
                   {(f[key] || []).map(item => (
-                    <div key={item.id} style={{ borderLeft: `2px solid ${cor}44`, paddingLeft: 12 }}>
+                    <div key={item.id} style={{ borderLeft: `2px solid ${item.automatica ? cor + '66' : cor + '33'}`, paddingLeft: 12, opacity: item.automatica ? 1 : 0.95 }}>
+                      {item.automatica && <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: cor, letterSpacing: 1, marginBottom: 4, opacity: 0.6 }}>● AUTOMÁTICO</div>}
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5 }}>
-                        <input value={item.nome} onChange={e => updCap(key, item.id, 'nome', e.target.value)} placeholder="Nome..." style={{ fontFamily: 'Cinzel,serif', fontSize: 13, color: cor }} />
-                        <BtnPerigo onClick={() => remCap(key, item.id)}>✕</BtnPerigo>
+                        <input value={item.nome} onChange={e => updCap(key, item.id, 'nome', e.target.value)}
+                          disabled={item.automatica}
+                          placeholder="Nome..." style={{ fontFamily: 'Cinzel,serif', fontSize: 13, color: cor, opacity: item.automatica ? 0.8 : 1, cursor: item.automatica ? 'default' : undefined }} />
+                        {!item.automatica && !bloq(key) && <BtnPerigo onClick={() => remCap(key, item.id)}>✕</BtnPerigo>}
                       </div>
-                      <textarea value={item.desc} onChange={e => updCap(key, item.id, 'desc', e.target.value)} rows={2} placeholder="Descrição, efeito, custo em PE..." style={{ fontSize: 14 }} />
+                      <textarea value={item.desc} onChange={e => updCap(key, item.id, 'desc', e.target.value)}
+                        disabled={item.automatica && bloq(key)}
+                        rows={2} placeholder="Descrição, efeito, custo em PE..." style={{ fontSize: 14, whiteSpace: 'pre-line' }} />
                     </div>
                   ))}
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <BtnLink onClick={() => setCatalogoAberto({ tipo: key })} cor={cor}>📖 CATÁLOGO</BtnLink>
-                  <BtnLink onClick={() => addCap(key)} cor={cor}>+ MANUAL</BtnLink>
-                </div>
+                {!bloq(key) && (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <BtnLink onClick={() => setCatalogoAberto({ tipo: key })} cor={cor}>📖 CATÁLOGO</BtnLink>
+                    <BtnLink onClick={() => addCap(key)} cor={cor}>+ MANUAL</BtnLink>
+                  </div>
+                )}
               </Painel>
             ))}
           </div>
         )}
 
-        {/* ── COMBATE ── */}
+        {/* ─── COMBATE ─── */}
         {aba === 'combate' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} className="anim">
             <Painel>
               <Titulo>Estatísticas</Titulo>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
                 {[['resistencia','RESISTÊNCIA'],['defesa','DEFESA'],['contraAtaque','CONTRA ATAQUE'],['esquiva','ESQUIVA'],['armaduraBase','ARMADURA BASE'],['movimento','MOVIMENTO']].map(([k,l]) => (
-                  <Campo key={k} label={l}>
-                    <input type="number" min={0} value={f.combate?.[k] || 0} onChange={e => setNested('combate', k, Number(e.target.value))} style={{ fontFamily: 'Cinzel,serif', fontSize: 18, textAlign: 'center' }} />
-                  </Campo>
+                  <Campo key={k} label={l}><input type="number" min={0} value={f.combate?.[k] || 0} onChange={e => setNested('combate', k, Number(e.target.value))} style={{ fontFamily: 'Cinzel,serif', fontSize: 18, textAlign: 'center' }} /></Campo>
                 ))}
               </div>
               <div style={{ marginTop: 12 }}>
-                <Campo label="Traumas">
-                  <textarea value={f.combate?.traumas || ''} rows={3} onChange={e => setNested('combate', 'traumas', e.target.value)} placeholder="Traumas ativos, sequelas, condições..." />
-                </Campo>
+                <Campo label="Traumas"><textarea value={f.combate?.traumas || ''} rows={3} onChange={e => setNested('combate', 'traumas', e.target.value)} placeholder="Traumas ativos, sequelas, condições..." /></Campo>
               </div>
             </Painel>
 
             <Painel>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 14, height: 1, background: '#c8a96e', opacity: 0.5 }} />
-                  <div style={{ fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: 3, color: '#c8a96e', textTransform: 'uppercase' }}>Arsenal</div>
+                  <div style={{ width: 14, height: 1, background: '#c8a96e', opacity: 0.6 }} />
+                  <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 3, color: '#c8a96e', textTransform: 'uppercase' }}>Arsenal</div>
                   <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right,rgba(200,169,110,0.25),transparent)', minWidth: 40 }} />
                 </div>
-                <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: pesoAtual > cargaMax ? '#9a3030' : '#3a4560', letterSpacing: 1 }}>
-                  PESO: {pesoAtual}/{cargaMax}
-                </div>
+                <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: pesoAtual > cargaMax ? '#9a3030' : '#3a4560', letterSpacing: 1 }}>PESO: {pesoAtual}/{cargaMax}</div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 12 }}>
                 {(f.armas || []).map(arma => (
-                  <div key={arma.id} style={{ border: `1px solid ${Number(arma.espaco) + (pesoAtual - Number(arma.espaco)) > cargaMax ? '#5a2020' : '#1a1d35'}`, padding: 12, borderRadius: 2 }}>
+                  <div key={arma.id} style={{ border: '1px solid #1a1d35', padding: 12, borderRadius: 2 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px', gap: 8, marginBottom: 8 }}>
                       <Campo label="Nome"><input value={arma.nome} onChange={e => updArma(arma.id,'nome',e.target.value)} placeholder="Nome da arma..." style={{ fontFamily: 'Cinzel,serif' }} /></Campo>
                       <Campo label="Tipo">
@@ -590,9 +699,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 8 }}>
                       <Campo label="CRÍTICO"><input value={arma.critico || ''} onChange={e => updArma(arma.id,'critico',e.target.value)} placeholder="—" /></Campo>
-                      <Campo label="ESPAÇO (PESO)">
-                        <input type="number" min={0} value={arma.espaco || 0} onChange={e => updArma(arma.id,'espaco',Number(e.target.value))} />
-                      </Campo>
+                      <Campo label="ESPAÇO (PESO)"><input type="number" min={0} value={arma.espaco || 0} onChange={e => updArma(arma.id,'espaco',Number(e.target.value))} /></Campo>
                       <Campo label="GRAU DE AMEAÇA">
                         <select value={arma.grauAmeaca || 1} onChange={e => updArma(arma.id,'grauAmeaca',Number(e.target.value))}>
                           <option value={1}>Ameaça 1 — Dano cheio</option>
@@ -601,6 +708,31 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                         </select>
                       </Campo>
                     </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                      <Campo label="TIPO DE MUNIÇÃO">
+                        <select value={arma.tipoMunicao || 'Padrão'} onChange={e => updArma(arma.id,'tipoMunicao',e.target.value)}>
+                          {TIPOS_MUNICAO.map(m => <option key={m.nome}>{m.nome}</option>)}
+                        </select>
+                      </Campo>
+                      <Campo label="ACESSÓRIOS">
+                        <select onChange={e => {
+                          if (!e.target.value) return
+                          const atual = arma.acessorios || []
+                          if (!atual.includes(e.target.value)) updArma(arma.id,'acessorios',[...atual, e.target.value])
+                          e.target.value = ''
+                        }}>
+                          <option value="">+ Adicionar acessório...</option>
+                          {ACESSORIOS_ARMA.map(a => <option key={a.nome} value={a.nome}>{a.nome} (peso {a.peso})</option>)}
+                        </select>
+                      </Campo>
+                    </div>
+                    {(arma.acessorios || []).length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
+                        {(arma.acessorios || []).map(ac => (
+                          <span key={ac} onClick={() => updArma(arma.id,'acessorios',(arma.acessorios||[]).filter(x=>x!==ac))} style={{ background: 'rgba(74,154,186,0.1)', border: '1px solid rgba(74,154,186,0.3)', color: '#4a9aba', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, padding: '2px 8px', borderRadius: 2, cursor: 'pointer', letterSpacing: 1 }}>{ac} ✕</span>
+                        ))}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                       <BtnPerigo onClick={() => remArma(arma.id)}>REMOVER</BtnPerigo>
                     </div>
@@ -624,19 +756,29 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
           </div>
         )}
 
-        {/* ── INVENTÁRIO ── */}
+        {/* ─── INVENTÁRIO ─── */}
         {aba === 'inventario' && (
           <div className="anim">
             <Painel>
-              <Titulo>Inventário</Titulo>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 55px 2fr 32px', gap: 6, marginBottom: 6 }}>
-                {['ITEM','QTD','DESCRIÇÃO',''].map((h,i) => <div key={i} style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#2a3050', letterSpacing: 1 }}>{h}</div>)}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 14, height: 1, background: '#c8a96e', opacity: 0.6 }} />
+                  <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 3, color: '#c8a96e', textTransform: 'uppercase' }}>Inventário</div>
+                  <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right,rgba(200,169,110,0.25),transparent)', minWidth: 40 }} />
+                </div>
+                <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: pesoAtual > cargaMax ? '#9a3030' : '#3a4560', letterSpacing: 1 }}>
+                  PESO TOTAL: {pesoAtual}/{cargaMax} (armas: {pesoArmas} · itens: {pesoInventario})
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 45px 55px 2fr 32px', gap: 6, marginBottom: 6 }}>
+                {['ITEM','QTD','PESO','DESCRIÇÃO',''].map((h,i) => <div key={i} style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#2a3050', letterSpacing: 1 }}>{h}</div>)}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
                 {(f.inventario || []).map(item => (
-                  <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1fr 55px 2fr 32px', gap: 6, alignItems: 'center' }}>
+                  <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1fr 45px 55px 2fr 32px', gap: 6, alignItems: 'center' }}>
                     <input value={item.item} onChange={e => updItem(item.id,'item',e.target.value)} placeholder="Item..." />
                     <input type="number" min={0} value={item.qtd} onChange={e => updItem(item.id,'qtd',Number(e.target.value))} style={{ textAlign: 'center' }} />
+                    <input type="number" min={0} value={item.peso || 0} onChange={e => updItem(item.id,'peso',Number(e.target.value))} style={{ textAlign: 'center' }} placeholder="0" />
                     <input value={item.desc} onChange={e => updItem(item.id,'desc',e.target.value)} placeholder="Descrição..." />
                     <button onClick={() => remItem(item.id)} style={{ background: 'transparent', border: '1px solid #2a1a1a', color: '#6a2020', width: 32, height: 32, borderRadius: 2, cursor: 'pointer', fontSize: 14 }}>✕</button>
                   </div>

@@ -3,17 +3,44 @@ import { useState } from 'react'
 import { useFichasMesa } from '../hooks/useFicha'
 import { PERICIAS } from '../data/sistema'
 import { Painel, Titulo, Barra, Tag } from './UI'
+import { doc, setDoc } from 'firebase/firestore'
+import { db } from '../firebase/config'
+
+const CAMPOS_BLOQUEAVEIS = [
+  { key: 'classe', label: 'Classe' },
+  { key: 'trilha', label: 'Trilha' },
+  { key: 'genese', label: 'Gênese' },
+  { key: 'elementos', label: 'Elementos' },
+  { key: 'focos', label: 'Atributos (Focos)' },
+  { key: 'pericias', label: 'Perícias' },
+  { key: 'habilidades', label: 'Habilidades' },
+  { key: 'passivas', label: 'Passivas' },
+  { key: 'magias', label: 'Magias' },
+  { key: 'poderes', label: 'Poderes' },
+]
 
 export default function PainelMestre({ mesa, onVoltar }) {
   const { fichas, loading } = useFichasMesa(mesa.id)
   const [selecionada, setSelecionada] = useState(null)
   const [abaVer, setAbaVer] = useState('geral')
 
+  const liberarCampo = async (uid, campo, liberar) => {
+    const ficha = fichas.find(f => f.uid === uid)
+    if (!ficha) return
+    const camposBloqueados = { ...(ficha.camposBloqueados || {}) }
+    if (liberar) {
+      camposBloqueados[campo] = false // false = liberado pelo mestre
+    } else {
+      delete camposBloqueados[campo] // volta ao padrão bloqueado
+    }
+    await setDoc(doc(db, 'mesas', mesa.id, 'fichas', uid), { camposBloqueados }, { merge: true })
+  }
+
   if (loading) return <Splash texto="CARREGANDO..." />
 
   if (selecionada) {
     const ficha = fichas.find(f => f.uid === selecionada)
-    return <VisualizarFicha ficha={ficha} onVoltar={() => setSelecionada(null)} abaVer={abaVer} setAbaVer={setAbaVer} />
+    return <VisualizarFicha ficha={ficha} onVoltar={() => setSelecionada(null)} abaVer={abaVer} setAbaVer={setAbaVer} liberarCampo={(campo, liberar) => liberarCampo(selecionada, campo, liberar)} />
   }
 
   return (
@@ -103,7 +130,7 @@ const ABAS_VER = [
   { id: 'inventario', label: 'INVENTÁRIO' },
 ]
 
-function VisualizarFicha({ ficha, onVoltar, abaVer, setAbaVer }) {
+function VisualizarFicha({ ficha, onVoltar, abaVer, setAbaVer, liberarCampo }) {
   const vidaAtual = ficha.reservas?.vida?.atual || 0
   const vidaMax = ficha.reservas?.vida?.max || 1
   const efAtual = ficha.reservas?.esforco?.atual || 0
@@ -156,6 +183,34 @@ function VisualizarFicha({ ficha, onVoltar, abaVer, setAbaVer }) {
       {/* Geral */}
       {abaVer === 'geral' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Controle de campos — só aparece se a ficha estiver finalizada */}
+          {ficha.finalizada && (
+            <Painel style={{ border: '1px solid rgba(200,169,110,0.25)' }}>
+              <Titulo cor="#c8a96e">Controle de Edição do Jogador</Titulo>
+              <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 14, color: '#6a7090', marginBottom: 12 }}>
+                Ficha finalizada. Libere campos específicos para o jogador poder editar.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {CAMPOS_BLOQUEAVEIS.map(({ key, label }) => {
+                  const liberado = ficha.camposBloqueados?.[key] === false
+                  return (
+                    <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: '#09090f', border: `1px solid ${liberado ? 'rgba(50,180,80,0.3)' : '#1a1d35'}`, borderRadius: 2 }}>
+                      <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: liberado ? '#5aaa70' : '#5a6580', letterSpacing: 1 }}>{label}</div>
+                      <button onClick={() => liberarCampo(key, !liberado)} style={{
+                        background: liberado ? 'rgba(50,180,80,0.1)' : 'rgba(200,169,110,0.06)',
+                        border: `1px solid ${liberado ? 'rgba(50,180,80,0.4)' : 'rgba(200,169,110,0.25)'}`,
+                        color: liberado ? '#5aaa70' : '#c8a96e',
+                        fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1,
+                        padding: '5px 12px', borderRadius: 2, cursor: 'pointer', transition: 'all 0.2s'
+                      }}>
+                        {liberado ? '🔓 LIBERADO' : '🔒 LIBERAR'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </Painel>
+          )}
           <Painel>
             <Titulo>Focos</Titulo>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8 }}>
