@@ -3,8 +3,6 @@ import { useState } from 'react'
 import { useFichasMesa, useNPCs } from '../hooks/useFicha'
 import { CLASSES, PERICIAS, GENESES, ELEMENTOS, TIPOS_ARMA, CATALOGO_ARMAS, CATALOGO_MAGIAS, CATALOGO_PODERES, ACESSORIOS_ARMA, TIPOS_MUNICAO, CARGA_POR_FORCA, CAPACIDADES_AUTOMATICAS, fichaInicial } from '../data/sistema'
 import { Painel, Titulo, Tag, Campo, Grid2, BtnLink, BtnPerigo } from './UI'
-import { doc, setDoc } from 'firebase/firestore'
-import { db } from '../firebase/config'
 
 const CAMPOS_BLOQUEAVEIS = [
   { key: 'classe', label: 'Classe' },
@@ -23,7 +21,7 @@ const CATEGORIAS_NPC = ['Boss', 'Principal', 'Inimigo', 'Aliado', 'Coadjuvante',
 const COR_CATEGORIA = { Boss: '#9a3030', Principal: '#c8a96e', Inimigo: '#8a4a20', Aliado: '#3a8a50', Coadjuvante: '#4a9aba', 'Padrão': '#5a6580' }
 
 export default function PainelMestre({ mesa, onVoltar }) {
-  const { fichas, loading, excluirFicha } = useFichasMesa(mesa.id)
+  const { fichas, loading, liberarCampo, excluirFicha, rejeitarExclusao } = useFichasMesa(mesa.id)
   const { npcs, salvarNPC, excluirNPC } = useNPCs(mesa.id)
   const [selecionada, setSelecionada] = useState(null)
   const [abaVer, setAbaVer] = useState('geral')
@@ -31,24 +29,10 @@ export default function PainelMestre({ mesa, onVoltar }) {
   const [npcSelecionado, setNpcSelecionado] = useState(null)
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(null) // uid da ficha
 
-  const liberarCampo = async (uid, campo, liberar) => {
-    const ficha = fichas.find(f => f.uid === uid)
-    if (!ficha) return
-    const camposBloqueados = { ...(ficha.camposBloqueados || {}) }
-    if (liberar) camposBloqueados[campo] = false
-    else delete camposBloqueados[campo]
-    await setDoc(doc(db, 'mesas', mesa.id, 'fichas', uid), { camposBloqueados }, { merge: true })
-  }
-
   const aprovarExclusao = async (uid) => {
     await excluirFicha(uid)
     setConfirmandoExclusao(null)
     setSelecionada(null)
-  }
-
-  const rejeitarExclusao = async (uid) => {
-    await setDoc(doc(db, 'mesas', mesa.id, 'fichas', uid), { solicitandoExclusao: false }, { merge: true })
-    setConfirmandoExclusao(null)
   }
 
   if (loading) return <Splash texto="CARREGANDO..." />
@@ -59,7 +43,7 @@ export default function PainelMestre({ mesa, onVoltar }) {
   if (selecionada) {
     const ficha = fichas.find(f => f.uid === selecionada)
     if (!ficha) return <Splash texto="CARREGANDO..." />
-    return <VisualizarFicha ficha={ficha} fichas={fichas} uid={selecionada} onVoltar={() => setSelecionada(null)} abaVer={abaVer} setAbaVer={setAbaVer} liberarCampo={(campo, liberar) => liberarCampo(selecionada, campo, liberar)} aprovarExclusao={() => aprovarExclusao(selecionada)} rejeitarExclusao={() => rejeitarExclusao(selecionada)} />
+    return <VisualizarFicha ficha={ficha} fichas={fichas} uid={selecionada} onVoltar={() => setSelecionada(null)} abaVer={abaVer} setAbaVer={setAbaVer} liberarCampo={(campo, liberar) => liberarCampo(selecionada, campo, liberar)} aprovarExclusao={() => aprovarExclusao(selecionada)} rejeitarExclusao={() => { rejeitarExclusao(selecionada) }} />
   }
 
   if (npcSelecionado !== null) {
@@ -107,7 +91,7 @@ export default function PainelMestre({ mesa, onVoltar }) {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setConfirmandoExclusao(f.uid)} style={{ background: 'rgba(154,48,48,0.15)', border: '1px solid #9a3030', color: '#c05050', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '5px 12px', borderRadius: 2, cursor: 'pointer' }}>APROVAR</button>
-                <button onClick={() => rejeitarExclusao(f.uid)} style={{ background: 'transparent', border: '1px solid #2a3050', color: '#5a6080', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '5px 12px', borderRadius: 2, cursor: 'pointer' }}>REJEITAR</button>
+                <button onClick={() => { rejeitarExclusao(f.uid); setConfirmandoExclusao(null) }} style={{ background: 'transparent', border: '1px solid #2a3050', color: '#5a6080', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '5px 12px', borderRadius: 2, cursor: 'pointer' }}>REJEITAR</button>
               </div>
             </div>
           ))}
@@ -483,6 +467,10 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
   const [salvando, setSalvando] = useState(false)
   const [aba, setAba] = useState('identidade')
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
+  const [uploadando, setUploadando] = useState(false)
+  const [catalogoAberto, setCatalogoAberto] = useState(null)
+  const [catalogoArmaAberto, setCatalogoArmaAberto] = useState(false)
+  const [categoriaArma, setCategoriaArma] = useState('Leve')
 
   const set = (k, v) => setDados(p => ({ ...p, [k]: v }))
   const setNested = (obj, k, v) => setDados(p => ({ ...p, [obj]: { ...p[obj], [k]: v } }))
@@ -492,12 +480,36 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
   const addCap = tipo => setDados(p => ({ ...p, [tipo]: [...(p[tipo] || []), { id: Date.now(), nome: '', desc: '' }] }))
   const remCap = (tipo, id) => setDados(p => ({ ...p, [tipo]: p[tipo].filter(x => x.id !== id) }))
   const updCap = (tipo, id, k, v) => setDados(p => ({ ...p, [tipo]: p[tipo].map(x => x.id === id ? { ...x, [k]: v } : x) }))
-  const addArma = () => setDados(p => ({ ...p, armas: [...(p.armas || []), { id: Date.now(), nome: '', tipo: '', dano: '', pericia: '', critico: '', municao: '', espaco: 0, alcance: '', grauAmeaca: 1 }] }))
+  const addArmaManual = () => setDados(p => ({ ...p, armas: [...(p.armas || []), { id: Date.now(), nome: '', tipo: '', dano: '', pericia: '', critico: '', municao: '', espaco: 0, alcance: '', grauAmeaca: 1, tipoMunicao: 'Padrão', acessorios: [] }] }))
+  const addArmaDoCatalogo = (arma) => { setDados(p => ({ ...p, armas: [...(p.armas || []), { id: Date.now(), nome: arma.nome, tipo: categoriaArma, dano: arma.dano, pericia: arma.pericia, critico: arma.critico, municao: arma.municao, espaco: arma.espaco, alcance: arma.alcance, grauAmeaca: 1, tipoMunicao: 'Padrão', acessorios: [] }] })); setCatalogoArmaAberto(false) }
   const remArma = id => setDados(p => ({ ...p, armas: p.armas.filter(a => a.id !== id) }))
   const updArma = (id, k, v) => setDados(p => ({ ...p, armas: p.armas.map(a => a.id === id ? { ...a, [k]: v } : a) }))
   const addItem = () => setDados(p => ({ ...p, inventario: [...(p.inventario || []), { id: Date.now(), item: '', qtd: 1, peso: 0, desc: '' }] }))
   const remItem = id => setDados(p => ({ ...p, inventario: p.inventario.filter(i => i.id !== id) }))
   const updItem = (id, k, v) => setDados(p => ({ ...p, inventario: p.inventario.map(i => i.id === id ? { ...i, [k]: v } : i) }))
+  const addCapDoCatalogo = (tipo, item) => { setDados(p => ({ ...p, [tipo]: [...(p[tipo] || []), { id: Date.now(), nome: item.nome, desc: item.desc, doCatalogo: true }] })); setCatalogoAberto(null) }
+
+  const handleFoto = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 1024 * 1024) { alert('Imagem muito grande. Use até 1MB.'); return }
+    setUploadando(true)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const max = 400; let w = img.width, h = img.height
+        if (w > h) { if (w > max) { h = h * max / w; w = max } } else { if (h > max) { w = w * max / h; h = max } }
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        set('fotoURL', canvas.toDataURL('image/jpeg', 0.8))
+        setUploadando(false)
+      }
+      img.src = ev.target.result
+    }
+    reader.readAsDataURL(file)
+  }
 
   const handleSalvar = async () => {
     setSalvando(true)
@@ -517,7 +529,74 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px 60px' }}>
-      {confirmandoExclusao && (
+
+      {/* Modal Catálogo de Capacidades */}
+      {catalogoAberto && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#0d0e18', border: '1px solid #1a1d35', borderRadius: 2, width: '100%', maxWidth: 620, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid #1a1d35', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontFamily: 'Cinzel,serif', fontSize: 13, color: '#c8a96e', letterSpacing: 2 }}>CATÁLOGO — {catalogoAberto.tipo.toUpperCase()}</div>
+              <button onClick={() => setCatalogoAberto(null)} style={{ background: 'transparent', border: 'none', color: '#5a6580', cursor: 'pointer', fontSize: 18 }}>✕</button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {(catalogoAberto.tipo === 'habilidades' || catalogoAberto.tipo === 'passivas') && (
+                <>
+                  <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2, marginBottom: 4 }}>CLASSE: {dados.classe.toUpperCase()}</div>
+                  {(CLASSES[dados.classe]?.[catalogoAberto.tipo] || []).map((item, i) => (
+                    <div key={i} onClick={() => addCapDoCatalogo(catalogoAberto.tipo, item)} style={{ background: '#09090f', border: '1px solid #1a1d35', padding: '10px 12px', borderRadius: 2, cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = '#c8a96e44'}
+                      onMouseLeave={e => e.currentTarget.style.borderColor = '#1a1d35'}>
+                      <div style={{ fontFamily: 'Cinzel,serif', fontSize: 12, color: '#c8a96e', marginBottom: 4 }}>{item.nome}</div>
+                      <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 13, color: '#6a7090', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{item.desc}</div>
+                    </div>
+                  ))}
+                </>
+              )}
+              {catalogoAberto.tipo === 'magias' && (dados.elementos || []).map(elem => {
+                const magias = CATALOGO_MAGIAS[elem]; if (!magias) return null
+                return <div key={elem}><div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#4a9aba', letterSpacing: 2, margin: '10px 0 6px' }}>ELEMENTO: {elem.toUpperCase()}</div>{Object.entries(magias).map(([circ, lista]) => (<div key={circ}><div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#2a3050', margin: '6px 0 4px' }}>{circ}</div>{lista.map((item, i) => (<div key={i} onClick={() => addCapDoCatalogo('magias', item)} style={{ background: '#09090f', border: '1px solid #1a1d35', padding: '9px 12px', borderRadius: 2, cursor: 'pointer', marginBottom: 5 }} onMouseEnter={e => e.currentTarget.style.borderColor = '#4a9aba44'} onMouseLeave={e => e.currentTarget.style.borderColor = '#1a1d35'}><div style={{ fontFamily: 'Cinzel,serif', fontSize: 12, color: '#4a9aba' }}>{item.nome}</div><div style={{ fontFamily: 'Crimson Text,serif', fontSize: 13, color: '#6a7090' }}>{item.desc}</div></div>))}</div>))}</div>
+              })}
+              {catalogoAberto.tipo === 'poderes' && (dados.elementos || []).map(elem => {
+                const poderes = CATALOGO_PODERES[elem]; if (!poderes) return null
+                return <div key={elem}><div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#9a3030', letterSpacing: 2, margin: '10px 0 6px' }}>ELEMENTO: {elem.toUpperCase()}</div>{poderes.map((item, i) => (<div key={i} onClick={() => addCapDoCatalogo('poderes', item)} style={{ background: '#09090f', border: '1px solid #1a1d35', padding: '9px 12px', borderRadius: 2, cursor: 'pointer', marginBottom: 5 }} onMouseEnter={e => e.currentTarget.style.borderColor = '#9a303044'} onMouseLeave={e => e.currentTarget.style.borderColor = '#1a1d35'}><div style={{ fontFamily: 'Cinzel,serif', fontSize: 12, color: '#9a3030' }}>{item.nome}</div><div style={{ fontFamily: 'Crimson Text,serif', fontSize: 13, color: '#6a7090' }}>{item.desc}</div></div>))}</div>
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Catálogo de Armas */}
+      {catalogoArmaAberto && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#0d0e18', border: '1px solid #1a1d35', borderRadius: 2, width: '100%', maxWidth: 720, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid #1a1d35', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontFamily: 'Cinzel,serif', fontSize: 13, color: '#c8a96e', letterSpacing: 2 }}>CATÁLOGO DE ARMAS</div>
+              <button onClick={() => setCatalogoArmaAberto(false)} style={{ background: 'transparent', border: 'none', color: '#5a6580', cursor: 'pointer', fontSize: 18 }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', borderBottom: '1px solid #1a1d35', overflowX: 'auto' }}>
+              {Object.keys(CATALOGO_ARMAS).map(cat => (
+                <button key={cat} onClick={() => setCategoriaArma(cat)} style={{ background: 'transparent', border: 'none', borderBottom: categoriaArma === cat ? '2px solid #c8a96e' : '2px solid transparent', color: categoriaArma === cat ? '#c8a96e' : '#3a4560', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, padding: '10px 16px', cursor: 'pointer', whiteSpace: 'nowrap' }}>{cat.toUpperCase()}</button>
+              ))}
+            </div>
+            <div style={{ overflowY: 'auto', padding: 12 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr style={{ borderBottom: '1px solid #1a1d35' }}>{['ARMA','DANO','ESPAÇO','ALCANCE','CRÍTICO','PERÍCIA',''].map((h,i) => <th key={i} style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#3a4560', padding: '6px 8px', textAlign: 'left' }}>{h}</th>)}</tr></thead>
+                <tbody>{(CATALOGO_ARMAS[categoriaArma] || []).map((arma, i) => (
+                  <tr key={i} onMouseEnter={e => e.currentTarget.style.background = 'rgba(200,169,110,0.04)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} style={{ borderBottom: '1px solid #0f1020' }}>
+                    <td style={{ fontFamily: 'Cinzel,serif', fontSize: 12, color: '#c8cdd8', padding: '8px' }}>{arma.nome}</td>
+                    <td style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 11, color: '#9a3030', padding: '8px' }}>{arma.dano}</td>
+                    <td style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 11, color: '#c8a96e', padding: '8px' }}>{arma.espaco}</td>
+                    <td style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#6a7090', padding: '8px' }}>{arma.alcance}</td>
+                    <td style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#6a7090', padding: '8px' }}>{arma.critico}</td>
+                    <td style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#4a9aba', padding: '8px' }}>{arma.pericia}</td>
+                    <td style={{ padding: '8px' }}><button onClick={() => addArmaDoCatalogo(arma)} style={{ background: 'rgba(200,169,110,0.08)', border: '1px solid rgba(200,169,110,0.3)', color: '#c8a96e', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, padding: '4px 10px', borderRadius: 2, cursor: 'pointer' }}>+ ADD</button></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ background: '#0d0e18', border: '1px solid #9a3030', borderRadius: 2, padding: 28, maxWidth: 380, width: '100%' }}>
             <div style={{ fontFamily: 'Cinzel,serif', fontSize: 15, color: '#c05050', letterSpacing: 2, marginBottom: 10 }}>EXCLUIR NPC</div>
@@ -558,41 +637,56 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
         {/* Identidade */}
         {aba === 'identidade' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} className="anim">
-            <Painel>
-              <Titulo>Dados do NPC</Titulo>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
-                <Campo label="Nome"><input value={dados.nome} onChange={e => set('nome', e.target.value)} placeholder="Nome do NPC..." style={{ fontFamily: 'Cinzel,serif', fontSize: 15 }} /></Campo>
-                <Campo label="Categoria">
-                  <select value={dados.categoriaNPC} onChange={e => set('categoriaNPC', e.target.value)}>
-                    {CATEGORIAS_NPC.map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </Campo>
-                <Campo label="Classe">
-                  <select value={dados.classe} onChange={e => set('classe', e.target.value)}>
-                    {Object.keys(CLASSES).map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </Campo>
-                <Campo label="Trilha">
-                  <select value={dados.trilha} onChange={e => set('trilha', e.target.value)}>
-                    <option value="">— Sem trilha —</option>
-                    {CLASSES[dados.classe]?.trilhas.map(t => <option key={t}>{t}</option>)}
-                  </select>
-                </Campo>
-                <Campo label="Raça"><input value={dados.raca || ''} onChange={e => set('raca', e.target.value)} placeholder="—" /></Campo>
-                <Campo label="Nível"><input type="number" min={1} max={300} value={dados.nivel} onChange={e => set('nivel', Number(e.target.value))} /></Campo>
+            <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 14 }}>
+              <div>
+                <div style={{ width: '100%', aspectRatio: '3/4', background: '#09090f', border: '1px solid #1a1d35', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', clipPath: 'polygon(10px 0%,100% 0%,100% calc(100% - 10px),calc(100% - 10px) 100%,0% 100%,0% 10px)' }}>
+                  {dados.fotoURL ? <img src={dados.fotoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ textAlign: 'center', padding: 12 }}><div style={{ fontSize: 24, opacity: 0.2 }}>◎</div><div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#2a3050' }}>SEM FOTO</div></div>}
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <input type="file" accept="image/*" onChange={handleFoto} style={{ display: 'none' }} id="npc-foto-input" />
+                  <button onClick={() => document.getElementById('npc-foto-input').click()} style={{ width: '100%', background: 'transparent', border: '1px solid #1a1d35', color: '#3a4560', fontFamily: 'Share Tech Mono,monospace', fontSize: 8, letterSpacing: 1, padding: '6px', borderRadius: 2, cursor: 'pointer', textAlign: 'center' }}
+                    onMouseEnter={e => { e.target.style.borderColor = `${corCat}55`; e.target.style.color = corCat }}
+                    onMouseLeave={e => { e.target.style.borderColor = '#1a1d35'; e.target.style.color = '#3a4560' }}>
+                    {uploadando ? 'ENVIANDO...' : dados.fotoURL ? 'ALTERAR FOTO' : '+ UPLOAD DE FOTO'}
+                  </button>
+                </div>
               </div>
-            </Painel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <Painel>
+                  <Titulo cor={corCat}>Dados do NPC</Titulo>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <Campo label="Nome"><input value={dados.nome} onChange={e => set('nome', e.target.value)} placeholder="Nome do NPC..." style={{ fontFamily: 'Cinzel,serif', fontSize: 15 }} /></Campo>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <Campo label="Categoria">
+                        <select value={dados.categoriaNPC} onChange={e => set('categoriaNPC', e.target.value)}>
+                          {CATEGORIAS_NPC.map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </Campo>
+                      <Campo label="Nível"><input type="number" min={1} max={300} value={dados.nivel} onChange={e => set('nivel', Number(e.target.value))} /></Campo>
+                      <Campo label="Classe">
+                        <select value={dados.classe} onChange={e => set('classe', e.target.value)}>
+                          {Object.keys(CLASSES).map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </Campo>
+                      <Campo label="Trilha">
+                        <select value={dados.trilha} onChange={e => set('trilha', e.target.value)}>
+                          <option value="">— Sem trilha —</option>
+                          {CLASSES[dados.classe]?.trilhas.map(t => <option key={t}>{t}</option>)}
+                        </select>
+                      </Campo>
+                      <Campo label="Raça"><input value={dados.raca || ''} onChange={e => set('raca', e.target.value)} placeholder="—" /></Campo>
+                    </div>
+                  </div>
+                </Painel>
+              </div>
+            </div>
             <Painel>
               <Titulo>Elementos</Titulo>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {ELEMENTOS.map(el => {
                   const selecionado = (dados.elementos || []).includes(el.nome) && el.nome !== 'Nenhum'
                   return (
-                    <button key={el.nome} onClick={() => {
-                      if (el.bloqueado) return
-                      const atual = dados.elementos || []
-                      set('elementos', selecionado ? atual.filter(e => e !== el.nome) : [...atual, el.nome])
-                    }} disabled={el.bloqueado}
+                    <button key={el.nome} onClick={() => { if (el.bloqueado) return; const atual = dados.elementos || []; set('elementos', selecionado ? atual.filter(e => e !== el.nome) : [...atual, el.nome]) }} disabled={el.bloqueado}
                       style={{ background: selecionado ? 'rgba(106,58,138,0.2)' : 'transparent', border: `1px solid ${el.bloqueado ? '#5a2020' : selecionado ? '#6a3a8a' : '#2a3050'}`, color: el.bloqueado ? '#5a2020' : selecionado ? '#9a5aba' : '#5a6580', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, padding: '6px 12px', borderRadius: 2, cursor: el.bloqueado ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
                       {el.nome}
                     </button>
@@ -675,9 +769,14 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
         {/* Capacidades */}
         {aba === 'capacidades' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} className="anim">
-            {[{ key: 'habilidades', label: 'Habilidades', cor: '#c8a96e' }, { key: 'magias', label: 'Magias', cor: '#4a9aba' }, { key: 'passivas', label: 'Passivas', cor: '#6a3a8a' }, { key: 'poderes', label: 'Poderes', cor: '#9a3030' }].map(({ key, label, cor }) => (
+            {[{ key: 'habilidades', label: 'Habilidades', sub: 'gastam PE', cor: '#c8a96e' }, { key: 'magias', label: 'Magias', sub: 'rituais', cor: '#4a9aba' }, { key: 'passivas', label: 'Passivas', sub: 'não gastam PE', cor: '#6a3a8a' }, { key: 'poderes', label: 'Poderes', sub: 'sobrenaturais', cor: '#9a3030' }].map(({ key, label, sub, cor }) => (
               <Painel key={key}>
-                <Titulo cor={cor}>{label}</Titulo>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <div style={{ width: 14, height: 1, background: cor, opacity: 0.6 }} />
+                  <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 3, color: cor, textTransform: 'uppercase' }}>{label}</div>
+                  <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#3a4560', letterSpacing: 1 }}>· {sub}</div>
+                  <div style={{ flex: 1, height: 1, background: `linear-gradient(to right,${cor}55,transparent)` }} />
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
                   {(dados[key] || []).map(item => (
                     <div key={item.id} style={{ borderLeft: `2px solid ${cor}44`, paddingLeft: 12 }}>
@@ -685,11 +784,14 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
                         <input value={item.nome} onChange={e => updCap(key, item.id, 'nome', e.target.value)} placeholder="Nome..." style={{ fontFamily: 'Cinzel,serif', fontSize: 13, color: cor }} />
                         <BtnPerigo onClick={() => remCap(key, item.id)}>✕</BtnPerigo>
                       </div>
-                      <textarea value={item.desc} onChange={e => updCap(key, item.id, 'desc', e.target.value)} rows={2} placeholder="Descrição, efeito..." style={{ fontSize: 14 }} />
+                      <textarea value={item.desc} onChange={e => !item.doCatalogo && updCap(key, item.id, 'desc', e.target.value)} disabled={item.doCatalogo} rows={2} placeholder="Descrição, efeito..." style={{ fontSize: 14, cursor: item.doCatalogo ? 'not-allowed' : undefined, opacity: item.doCatalogo ? 0.75 : 1 }} />
                     </div>
                   ))}
                 </div>
-                <BtnLink onClick={() => addCap(key)} cor={cor}>+ ADICIONAR</BtnLink>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <BtnLink onClick={() => setCatalogoAberto({ tipo: key })} cor={cor}>📖 CATÁLOGO</BtnLink>
+                  <BtnLink onClick={() => addCap(key)} cor={cor}>+ MANUAL</BtnLink>
+                </div>
               </Painel>
             ))}
           </div>
@@ -706,22 +808,17 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
                 ))}
               </div>
               <div style={{ marginTop: 12 }}>
-                <Campo label="Traumas / Condições"><textarea value={dados.combate?.traumas || ''} rows={3} onChange={e => setNested('combate', 'traumas', e.target.value)} placeholder="Condições especiais, resistências, fraquezas..." /></Campo>
+                <Campo label="Traumas / Condições / Resistências"><textarea value={dados.combate?.traumas || ''} rows={3} onChange={e => setNested('combate', 'traumas', e.target.value)} placeholder="Condições especiais, resistências, fraquezas, imunidades..." /></Campo>
               </div>
             </Painel>
             <Painel>
               <Titulo>Arsenal</Titulo>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 12 }}>
                 {(dados.armas || []).map(arma => (
-                  <div key={arma.id} style={{ border: '1px solid #1a1d35', padding: 10, borderRadius: 2 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 8, marginBottom: 8 }}>
+                  <div key={arma.id} style={{ border: '1px solid #1a1d35', padding: 12, borderRadius: 2 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px', gap: 8, marginBottom: 8 }}>
                       <Campo label="Nome"><input value={arma.nome} onChange={e => updArma(arma.id,'nome',e.target.value)} placeholder="Nome da arma..." style={{ fontFamily: 'Cinzel,serif' }} /></Campo>
-                      <Campo label="Tipo">
-                        <select value={arma.tipo} onChange={e => updArma(arma.id,'tipo',e.target.value)}>
-                          <option value="">—</option>
-                          {TIPOS_ARMA.map(t => <option key={t}>{t}</option>)}
-                        </select>
-                      </Campo>
+                      <Campo label="Tipo"><select value={arma.tipo} onChange={e => updArma(arma.id,'tipo',e.target.value)}><option value="">—</option>{TIPOS_ARMA.map(t => <option key={t}>{t}</option>)}</select></Campo>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 8 }}>
                       {[['dano','DANO'],['pericia','PERÍCIA'],['municao','MUNIÇÃO'],['alcance','ALCANCE']].map(([k,l]) => (
@@ -731,21 +828,27 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 8 }}>
                       <Campo label="CRÍTICO"><input value={arma.critico || ''} onChange={e => updArma(arma.id,'critico',e.target.value)} placeholder="—" /></Campo>
                       <Campo label="ESPAÇO"><input type="number" min={0} value={arma.espaco || 0} onChange={e => updArma(arma.id,'espaco',Number(e.target.value))} /></Campo>
-                      <Campo label="GRAU DE AMEAÇA">
-                        <select value={arma.grauAmeaca || 1} onChange={e => updArma(arma.id,'grauAmeaca',Number(e.target.value))}>
-                          <option value={1}>Ameaça 1</option>
-                          <option value={2}>Ameaça 2</option>
-                          <option value={3}>Ameaça 3</option>
-                        </select>
-                      </Campo>
+                      <Campo label="GRAU DE AMEAÇA"><select value={arma.grauAmeaca || 1} onChange={e => updArma(arma.id,'grauAmeaca',Number(e.target.value))}><option value={1}>Ameaça 1</option><option value={2}>Ameaça 2</option><option value={3}>Ameaça 3</option></select></Campo>
                     </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                      <Campo label="TIPO DE MUNIÇÃO"><select value={arma.tipoMunicao || 'Padrão'} onChange={e => updArma(arma.id,'tipoMunicao',e.target.value)}>{TIPOS_MUNICAO.map(m => <option key={m.nome}>{m.nome}</option>)}</select></Campo>
+                      <Campo label="ACESSÓRIOS"><select onChange={e => { if (!e.target.value) return; const atual = arma.acessorios || []; if (!atual.includes(e.target.value)) updArma(arma.id,'acessorios',[...atual, e.target.value]); e.target.value = '' }}><option value="">+ Adicionar...</option>{ACESSORIOS_ARMA.map(a => <option key={a.nome} value={a.nome}>{a.nome} (peso {a.peso})</option>)}</select></Campo>
+                    </div>
+                    {(arma.acessorios || []).length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
+                        {(arma.acessorios || []).map(ac => (<span key={ac} onClick={() => updArma(arma.id,'acessorios',(arma.acessorios||[]).filter(x=>x!==ac))} style={{ background: 'rgba(74,154,186,0.1)', border: '1px solid rgba(74,154,186,0.3)', color: '#4a9aba', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, padding: '2px 8px', borderRadius: 2, cursor: 'pointer' }}>{ac} ✕</span>))}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                       <BtnPerigo onClick={() => remArma(arma.id)}>REMOVER</BtnPerigo>
                     </div>
                   </div>
                 ))}
               </div>
-              <BtnLink onClick={addArma}>+ ARMA</BtnLink>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <BtnLink onClick={() => setCatalogoArmaAberto(true)}>📖 CATÁLOGO</BtnLink>
+                <BtnLink onClick={addArmaManual}>+ MANUAL</BtnLink>
+              </div>
             </Painel>
           </div>
         )}
