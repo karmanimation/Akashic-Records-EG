@@ -40,13 +40,14 @@ function isBloqueado(ficha, campo) {
   return true
 }
 
-export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, onVoltar }) {
+export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, onVoltar, solicitarExclusao, cancelarExclusao }) {
   const [aba, setAba] = useState('identidade')
   const [uploadando, setUploadando] = useState(false)
   const [catalogoAberto, setCatalogoAberto] = useState(null)
   const [catalogoArmaAberto, setCatalogoArmaAberto] = useState(false)
   const [categoriaArma, setCategoriaArma] = useState('Leve')
   const [confirmandoFinalizar, setConfirmandoFinalizar] = useState(false)
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
 
   const f = ficha
   const bloq = (campo) => isBloqueado(ficha, campo)
@@ -235,7 +236,37 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
         </div>
       )}
 
-      {/* Modal Catálogo de Capacidades */}
+      {/* Modal confirmação exclusão */}
+      {confirmandoExclusao && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#0d0e18', border: '1px solid #9a3030', borderRadius: 2, padding: 32, maxWidth: 420, width: '100%' }}>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 16, color: '#c05050', letterSpacing: 2, marginBottom: 12 }}>SOLICITAR EXCLUSÃO</div>
+            {ficha.solicitandoExclusao ? (
+              <>
+                <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: '#8a9ab0', lineHeight: 1.6, marginBottom: 20 }}>
+                  Sua solicitação de exclusão foi enviada ao Mestre. Aguarde a aprovação.<br /><br />
+                  Deseja cancelar a solicitação?
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={async () => { await cancelarExclusao(); setConfirmandoExclusao(false) }} style={{ flex: 1, background: 'transparent', border: '1px solid #c8a96e55', color: '#c8a96e', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>CANCELAR SOLICITAÇÃO</button>
+                  <button onClick={() => setConfirmandoExclusao(false)} style={{ flex: 1, background: 'transparent', border: '1px solid #2a3050', color: '#6a7090', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>FECHAR</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: '#8a9ab0', lineHeight: 1.6, marginBottom: 20 }}>
+                  Isso enviará uma <strong style={{ color: '#c05050' }}>solicitação de exclusão</strong> ao Mestre. Sua ficha só será removida após a aprovação dele.<br /><br />
+                  Tem certeza?
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={async () => { await solicitarExclusao(); setConfirmandoExclusao(false) }} style={{ flex: 1, background: 'rgba(154,48,48,0.15)', border: '1px solid #9a3030', color: '#c05050', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>SIM, SOLICITAR</button>
+                  <button onClick={() => setConfirmandoExclusao(false)} style={{ flex: 1, background: 'transparent', border: '1px solid #2a3050', color: '#6a7090', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>CANCELAR</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {catalogoAberto && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ background: '#0d0e18', border: '1px solid #1a1d35', borderRadius: 2, width: '100%', maxWidth: 620, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -400,6 +431,10 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                 ◉ FINALIZAR
               </button>
             )}
+            <button onClick={() => setConfirmandoExclusao(true)} style={{ background: 'transparent', border: '1px solid #5a202055', color: '#6a3030', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '6px 12px', cursor: 'pointer', borderRadius: 2 }}
+              title="Solicitar exclusão da ficha ao Mestre">
+              {f.solicitandoExclusao ? '⏳ AGUARDANDO' : '🗑 EXCLUIR'}
+            </button>
             <button onClick={() => salvar(ficha)} disabled={salvando} style={{ background: 'transparent', border: `1px solid ${salvando ? '#2a3050' : '#c8a96e55'}`, color: salvando ? '#3a4560' : '#c8a96e', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, padding: '6px 14px', cursor: 'pointer', borderRadius: 2 }}>
               {salvando ? '◌ SALVANDO' : '◈ SALVAR'}
             </button>

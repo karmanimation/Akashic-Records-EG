@@ -16,7 +16,7 @@ export default function App() {
   const ehMestre = mesaSelecionada && mesaSelecionada.mestreId === user?.uid
 
   // Hook da ficha — só ativo quando o jogador entra em mesa
-  const { ficha, setFicha, salvar, salvando, ultimoSalvo } =
+  const { ficha, setFicha, salvar, salvando, ultimoSalvo, solicitarExclusao, cancelarExclusao } =
     useFicha(!ehMestre ? user?.uid : null, !ehMestre ? mesaSelecionada?.id : null)
 
   if (loading) return <Splash texto="CARREGANDO..." />
@@ -46,6 +46,8 @@ export default function App() {
       salvar={salvar}
       salvando={salvando}
       ultimoSalvo={ultimoSalvo}
+      solicitarExclusao={solicitarExclusao}
+      cancelarExclusao={cancelarExclusao}
       onVoltar={() => setMesaSelecionada(null)}
     />
   )
