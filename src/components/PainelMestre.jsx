@@ -20,14 +20,16 @@ const CAMPOS_BLOQUEAVEIS = [
 const CATEGORIAS_NPC = ['Boss', 'Principal', 'Inimigo', 'Aliado', 'Coadjuvante', 'Padrão']
 const COR_CATEGORIA = { Boss: '#9a3030', Principal: '#c8a96e', Inimigo: '#8a4a20', Aliado: '#3a8a50', Coadjuvante: '#4a9aba', 'Padrão': '#5a6580' }
 
-export default function PainelMestre({ mesa, onVoltar }) {
+export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
   const { fichas, loading, liberarCampo, excluirFicha, rejeitarExclusao } = useFichasMesa(mesa.id)
   const { npcs, salvarNPC, excluirNPC } = useNPCs(mesa.id)
   const [selecionada, setSelecionada] = useState(null)
   const [abaVer, setAbaVer] = useState('geral')
-  const [abaPrincipal, setAbaPrincipal] = useState('jogadores') // 'jogadores' | 'npcs'
+  const [abaPrincipal, setAbaPrincipal] = useState('jogadores')
   const [npcSelecionado, setNpcSelecionado] = useState(null)
-  const [confirmandoExclusao, setConfirmandoExclusao] = useState(null) // uid da ficha
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(null)
+  const [confirmandoMesa1, setConfirmandoMesa1] = useState(false)
+  const [confirmandoMesa2, setConfirmandoMesa2] = useState(false)
 
   const aprovarExclusao = async (uid) => {
     await excluirFicha(uid)
@@ -79,7 +81,41 @@ export default function PainelMestre({ mesa, onVoltar }) {
           <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', marginTop: 3 }}>CÓDIGO: {mesa.codigo}</div>
         </div>
         <button onClick={onVoltar} style={{ background: 'transparent', border: '1px solid #2a3050', color: '#4a6080', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '7px 14px', borderRadius: 2, cursor: 'pointer' }}>← VOLTAR</button>
+        <button onClick={() => setConfirmandoMesa1(true)} style={{ background: 'transparent', border: '1px solid #5a202055', color: '#6a3030', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '7px 14px', borderRadius: 2, cursor: 'pointer' }}>🗑 EXCLUIR MESA</button>
       </div>
+
+      {/* Modal 1ª confirmação — excluir mesa */}
+      {confirmandoMesa1 && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#0d0e18', border: '1px solid #9a3030', borderRadius: 2, padding: 32, maxWidth: 420, width: '100%' }}>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 16, color: '#c05050', letterSpacing: 2, marginBottom: 12 }}>EXCLUIR MESA</div>
+            <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: '#8a9ab0', lineHeight: 1.6, marginBottom: 20 }}>
+              Você está prestes a excluir a mesa <strong style={{ color: '#c8a96e' }}>{mesa.nome}</strong>.<br /><br />
+              Isso irá remover <strong style={{ color: '#c05050' }}>todas as fichas e NPCs</strong> permanentemente. Esta ação é irreversível.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => { setConfirmandoMesa1(false); setConfirmandoMesa2(true) }} style={{ flex: 1, background: 'rgba(154,48,48,0.15)', border: '1px solid #9a3030', color: '#c05050', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>SIM, CONTINUAR</button>
+              <button onClick={() => setConfirmandoMesa1(false)} style={{ flex: 1, background: 'transparent', border: '1px solid #2a3050', color: '#6a7090', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>CANCELAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 2ª confirmação — excluir mesa */}
+      {confirmandoMesa2 && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#0d0e18', border: '2px solid #9a3030', borderRadius: 2, padding: 32, maxWidth: 420, width: '100%' }}>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 16, color: '#c05050', letterSpacing: 2, marginBottom: 12 }}>CONFIRMAÇÃO FINAL</div>
+            <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: '#c05050', lineHeight: 1.6, marginBottom: 20 }}>
+              Tem <strong>absoluta certeza</strong>? A mesa <strong style={{ color: '#c8a96e' }}>{mesa.nome}</strong> e todo seu conteúdo será apagado para sempre. Não há como desfazer.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={async () => { setConfirmandoMesa2(false); await excluirMesa() }} style={{ flex: 1, background: 'rgba(154,48,48,0.25)', border: '2px solid #9a3030', color: '#ff5050', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, padding: '12px', borderRadius: 2, cursor: 'pointer' }}>EXCLUIR PERMANENTEMENTE</button>
+              <button onClick={() => setConfirmandoMesa2(false)} style={{ flex: 1, background: 'transparent', border: '1px solid #2a3050', color: '#6a7090', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, padding: '12px', borderRadius: 2, cursor: 'pointer' }}>CANCELAR</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Alertas de exclusão pendente */}
       {solicitacoesPendentes.length > 0 && (

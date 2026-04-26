@@ -10,7 +10,7 @@ import PainelMestre from './components/PainelMestre'
 
 export default function App() {
   const { user, loading, error, login, register, logout } = useAuth()
-  const { mesas, criarMesa, entrarMesa } = useMesas(user)
+  const { mesas, criarMesa, entrarMesa, excluirMesa } = useMesas(user)
   const [mesaSelecionada, setMesaSelecionada] = useState(null)
 
   const ehMestre = mesaSelecionada && mesaSelecionada.mestreId === user?.uid
@@ -36,7 +36,7 @@ export default function App() {
   }
 
   if (ehMestre) {
-    return <PainelMestre mesa={mesaSelecionada} onVoltar={() => setMesaSelecionada(null)} />
+    return <PainelMestre mesa={mesaSelecionada} onVoltar={() => setMesaSelecionada(null)} excluirMesa={async () => { await excluirMesa(mesaSelecionada.id); setMesaSelecionada(null) }} />
   }
 
   return (

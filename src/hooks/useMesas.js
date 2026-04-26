@@ -1,7 +1,7 @@
 // src/hooks/useMesas.js
 import { useState, useEffect } from 'react'
 import {
-  collection, doc, setDoc, getDoc, onSnapshot,
+  collection, doc, setDoc, getDoc, onSnapshot, deleteDoc,
   query, where, arrayUnion, serverTimestamp
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
@@ -77,5 +77,9 @@ export function useMesas(user) {
     return data.nome
   }
 
-  return { mesas, loading, criarMesa, entrarMesa }
+  const excluirMesa = async (mesaId) => {
+    await deleteDoc(doc(db, 'mesas', mesaId))
+  }
+
+  return { mesas, loading, criarMesa, entrarMesa, excluirMesa }
 }

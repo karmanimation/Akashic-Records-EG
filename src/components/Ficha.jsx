@@ -36,7 +36,9 @@ function podeAumentar(focos, attr) {
 // Verifica se um campo está bloqueado para o jogador
 function isBloqueado(ficha, campo) {
   if (!ficha.finalizada) return false
-  if (ficha.camposBloqueados?.[campo] === false) return false // Mestre liberou
+  // Mestre liberou explicitamente = false no Firebase
+  if (ficha.camposBloqueados?.[campo] === false) return false
+  // Se nunca foi tocado ou está true = bloqueado
   return true
 }
 

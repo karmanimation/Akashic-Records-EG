@@ -1,6 +1,6 @@
 // src/hooks/useFicha.js
 import { useState, useEffect, useCallback } from 'react'
-import { doc, setDoc, deleteDoc, onSnapshot, collection, updateDoc } from 'firebase/firestore'
+import { doc, setDoc, deleteDoc, onSnapshot, collection, updateDoc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { fichaInicial } from '../data/sistema'
 
@@ -14,29 +14,39 @@ export function useFicha(userId, mesaId) {
     const ref_ = doc(db, 'mesas', mesaId, 'fichas', userId)
     return onSnapshot(ref_, snap => {
       if (snap.exists()) {
-        // Merge cuidadoso: mantém fichaInicial como base mas prioriza todos os dados do Firebase
+        // NÃO usa fichaInicial() no spread — preserva tudo que vem do Firebase
         const dados = snap.data()
-        setFicha(prev => ({ ...fichaInicial(), ...dados }))
+        setFicha(prev => {
+          // Só atualiza campos que vieram do Firebase, sem sobrescrever nada
+          return { ...fichaInicial(), ...dados }
+        })
       } else {
         setFicha(fichaInicial())
       }
     })
   }, [userId, mesaId])
 
+  // Salva a ficha — preserva campos controlados pelo Mestre
   const salvar = useCallback(async (dados) => {
     if (!userId || !mesaId) return
     setSalvando(true)
     try {
-      await setDoc(doc(db, 'mesas', mesaId, 'fichas', userId), dados)
+      const ref_ = doc(db, 'mesas', mesaId, 'fichas', userId)
+      // Remove campos que só o Mestre controla antes de salvar
+      const { camposBloqueados, solicitandoExclusao, ...dadosJogador } = dados
+      // Usa merge:true para nunca sobrescrever camposBloqueados do Mestre
+      await setDoc(ref_, dadosJogador, { merge: true })
       setUltimoSalvo(new Date())
     } finally { setSalvando(false) }
   }, [userId, mesaId])
 
+  // Jogador solicita exclusão
   const solicitarExclusao = useCallback(async () => {
     if (!userId || !mesaId) return
     await updateDoc(doc(db, 'mesas', mesaId, 'fichas', userId), { solicitandoExclusao: true })
   }, [userId, mesaId])
 
+  // Jogador cancela solicitação
   const cancelarExclusao = useCallback(async () => {
     if (!userId || !mesaId) return
     await updateDoc(doc(db, 'mesas', mesaId, 'fichas', userId), { solicitandoExclusao: false })
@@ -57,19 +67,30 @@ export function useFichasMesa(mesaId) {
     })
   }, [mesaId])
 
-  // Mestre libera um campo específico — usa updateDoc com dot notation para não sobrescrever outros campos
+  // Mestre libera um campo — dot notation garante que só aquele campo é tocado
   const liberarCampo = useCallback(async (uid, campo, liberar) => {
     if (!mesaId || !uid) return
-    const ref_ = doc(db, 'mesas', mesaId, 'fichas', uid)
-    // Dot notation no Firestore faz update apenas do campo específico sem sobrescrever o objeto inteiro
-    await updateDoc(ref_, { [`camposBloqueados.${campo}`]: liberar ? false : null })
+    try {
+      const ref_ = doc(db, 'mesas', mesaId, 'fichas', uid)
+      if (liberar) {
+        // Libera o campo: seta false no Firebase
+        await updateDoc(ref_, { [`camposBloqueados.${campo}`]: false })
+      } else {
+        // Volta a bloquear: seta true
+        await updateDoc(ref_, { [`camposBloqueados.${campo}`]: true })
+      }
+    } catch (e) {
+      console.error('Erro ao liberar campo:', e)
+    }
   }, [mesaId])
 
+  // Mestre exclui ficha
   const excluirFicha = useCallback(async (uid) => {
     if (!mesaId || !uid) return
     await deleteDoc(doc(db, 'mesas', mesaId, 'fichas', uid))
   }, [mesaId])
 
+  // Mestre rejeita exclusão
   const rejeitarExclusao = useCallback(async (uid) => {
     if (!mesaId || !uid) return
     await updateDoc(doc(db, 'mesas', mesaId, 'fichas', uid), { solicitandoExclusao: false })
