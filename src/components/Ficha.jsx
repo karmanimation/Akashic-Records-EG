@@ -1,6 +1,6 @@
 // src/components/Ficha.jsx
 import { useState } from 'react'
-import { CLASSES, PERICIAS, GENESES, ELEMENTOS, TIPOS_ARMA, CATALOGO_ARMAS, CATALOGO_MAGIAS, CATALOGO_PODERES, GRAUS_AMEACA, CARGA_POR_FORCA, CAPACIDADES_AUTOMATICAS, ACESSORIOS_ARMA, TIPOS_MUNICAO } from '../data/sistema'
+import { CLASSES, PERICIAS, GENESES, GENESES_DATA, ELEMENTOS, TIPOS_ARMA, CATALOGO_ARMAS, CATALOGO_MAGIAS, CATALOGO_PODERES, GRAUS_AMEACA, CARGA_POR_FORCA, CAPACIDADES_AUTOMATICAS, ACESSORIOS_ARMA, TIPOS_MUNICAO } from '../data/sistema'
 import { Painel, Titulo, Campo, Grid2, Grid3, Barra, Tag, BtnLink, BtnPerigo } from './UI'
 
 const ABAS = [
@@ -94,8 +94,33 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
     }))
   }
 
+  // Trocar gênese: remove capacidades antigas da gênese e adiciona as novas
+  const selecionarGenese = (novaGenese) => {
+    if (bloq('genese')) return
+    const data = GENESES_DATA[novaGenese] || { habilidades: [], passivas: [], bonusPericias: [], descricao: '' }
+    const passivaBase = data.bonusPericias?.length > 0 ? [{
+      id: Date.now() + Math.random(),
+      nome: `Base — ${novaGenese}`,
+      desc: `${data.descricao}\n\nBônus de Perícia: +2 em ${data.bonusPericias.join(' e ')}.`,
+      automatica: true,
+      deGenese: true
+    }] : []
+    setFicha(p => ({
+      ...p,
+      genese: novaGenese,
+      habilidades: [
+        ...(p.habilidades || []).filter(h => !h.deGenese),
+        ...data.habilidades.map(h => ({ id: Date.now() + Math.random(), nome: h.nome, desc: h.desc, automatica: true, deGenese: true }))
+      ],
+      passivas: [
+        ...(p.passivas || []).filter(h => !h.deGenese),
+        ...passivaBase,
+        ...data.passivas.map(h => ({ id: Date.now() + Math.random(), nome: h.nome, desc: h.desc, automatica: true, deGenese: true }))
+      ]
+    }))
+  }
+
   const setFoco = (attr, v) => {
-    if (bloq('focos')) return
     if (v > f.focos[attr] && !podeAumentar(f.focos, attr)) return
     const novo = Math.max(0, Math.min(15, v))
     setFicha(p => ({ ...p, focos: { ...p.focos, [attr]: novo } }))
@@ -506,9 +531,23 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                       </select>
                     </Campo>
                     <Campo label={<>Gênese <Cadeado campo="genese" /></>}>
-                      <select value={f.genese} onChange={e => !bloq('genese') && set('genese', e.target.value)} disabled={bloq('genese')} style={inputStyle('genese')}>
+                      <select value={f.genese} onChange={e => !bloq('genese') && selecionarGenese(e.target.value)} disabled={bloq('genese')} style={inputStyle('genese')}>
                         {GENESES.map(g => <option key={g}>{g}</option>)}
                       </select>
+                      {f.genese && GENESES_DATA[f.genese] && (
+                        <div style={{ marginTop: 6, padding: '6px 10px', background: 'rgba(200,169,110,0.05)', border: '1px solid rgba(200,169,110,0.15)', borderRadius: 2 }}>
+                          {GENESES_DATA[f.genese].bonusPericias.length > 0 && (
+                            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#c8a96e', letterSpacing: 1 }}>
+                              BÔNUS +2: {GENESES_DATA[f.genese].bonusPericias.join(' · ')}
+                            </div>
+                          )}
+                          {f.genese === 'Psicólogo' && (
+                            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#c8a96e', letterSpacing: 1 }}>
+                              BÔNUS +2: Duas perícias à escolha
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </Campo>
                     <Campo label="Personalidade">
                       <input value={f.personalidade || ''} onChange={e => set('personalidade', e.target.value)} placeholder="Descreva brevemente..." />

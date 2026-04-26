@@ -273,8 +273,145 @@ export const GENESES = [
   "Sofredor", "Estudante", "Agricultor", "Golpista", "Programador",
   "Militar", "Médico", "Artista", "Psicólogo", "Teórico",
   "Afortunado", "Policial", "Funcionário", "Autônomo", "Místico",
-  "Mendigo", "Administrador", "Bandido", "Treinador", "Sem Gênese"
+  "Mendigo", "Administrador", "Bandido", "Atleta", "Treinador",
+  "Religioso", "Sem Gênese"
 ]
+
+// Capacidades e bônus automáticos por Gênese
+export const GENESES_DATA = {
+  "Sofredor": {
+    descricao: "Alguém que passa pela dor, perda ou carrega traumas profundos. Rola 1d20 no início da história para adquirir um trauma permanente.",
+    bonusPericias: ["Sanidade", "Vontade"],
+    habilidades: [],
+    passivas: [{ nome: "Marcas Emocionais", desc: "Você ganha +2 pontos de Sanidade a cada 5 níveis alcançados." }]
+  },
+  "Estudante": {
+    descricao: "Uma pessoa em constante desenvolvimento que busca conhecimento e se dedica a compreender o mundo.",
+    bonusPericias: ["Atualidade", "Outra Língua"],
+    habilidades: [],
+    passivas: [{ nome: "Esforçado", desc: "Você ganha +2 PE iniciais. +1 PE adicional a cada 5 níveis alcançados. Além disso, seu limite de PE por turno aumenta em +2 a cada 10 níveis alcançados." }]
+  },
+  "Agricultor": {
+    descricao: "Uma pessoa que atua em áreas rurais ou isoladas. Desenvolve uma conexão íntima com a natureza e com os animais.",
+    bonusPericias: ["Sobrevivência", "Adestramento"],
+    habilidades: [{ nome: "Pioneiro", desc: "Ao fazer um teste de Sobrevivência, Adestramento ou Medicina, você pode gastar 2 PE para receber +5 na sua próxima rolagem dessas perícias. Além disso, você não sofre penalidade ao locomover-se por terreno difícil." }],
+    passivas: []
+  },
+  "Golpista": {
+    descricao: "Para quem acha que a riqueza exige trabalho demais e opta por atalhos: golpes, apostas, mentiras ou pequenos roubos.",
+    bonusPericias: ["Crime", "Enganação"],
+    habilidades: [{ nome: "Trapaceiro", desc: "Uma vez por cena, você pode gastar 2 PE para substituir qualquer rolagem de perícia por um teste de Enganação." }],
+    passivas: []
+  },
+  "Programador": {
+    descricao: "Uma mente criativa por trás de softwares, projetos e soluções digitais. Domina a arte de transformar ideias em programas funcionais.",
+    bonusPericias: ["Hacker", "Tecnologia"],
+    habilidades: [{ nome: "Investigador", desc: "Uma vez por cena, se estiver com acesso à internet, você pode gastar 2 PE para substituir qualquer teste de perícia por Tecnologia." }],
+    passivas: []
+  },
+  "Teórico": {
+    descricao: "Dedicou anos à pesquisa de verdades ocultas, figuras poderosas que agem nas sombras e mistérios ignorados pela sociedade.",
+    bonusPericias: ["Ocultismo", "Investigação"],
+    habilidades: [],
+    passivas: [{ nome: "Ciente", desc: "Com uma mente inabalável, você não sofre todo dano mental de ataques que afetam sua mente. Você possui resistência mental igual ao seu valor de Intelecto — esse valor reduz DANOS à Sanidade." }]
+  },
+  "Afortunado": {
+    descricao: "Nasceu ou conquistou uma posição privilegiada. Seja por herança, sorte, conexões ou puro oportunismo.",
+    bonusPericias: ["Diplomacia", "Pilotagem"],
+    habilidades: [],
+    passivas: [{ nome: "Patrocinador", desc: "Sua classe de crédito inicial é uma acima da atual." }]
+  },
+  "Policial": {
+    descricao: "Esteve ou está do lado da lei. Enfrentou o pior da sociedade com um distintivo no peito.",
+    bonusPericias: ["Percepção", "Pontaria"],
+    habilidades: [],
+    passivas: [{ nome: "Guarda", desc: "Você ganha +3 em sua Defesa Base." }]
+  },
+  "Religioso": {
+    descricao: "Dedicou sua vida à fé, seja em busca de redenção, respostas ou propósito. Pode ter servido como padre, pastor, monge ou místico.",
+    bonusPericias: ["Religião", "Identificar Criatura"],
+    habilidades: [{ nome: "Adormecer", desc: "Por 2 PE quando acalmar alguém, ela recebe 2d3 + seu Domínio em pontos de Sanidade." }],
+    passivas: [{ nome: "Adormecer (Passiva)", desc: "Você recebe +4 em rolagens de Religião, Acalmar, Identificar Criatura e Identificar Magia." }]
+  },
+  "Funcionário": {
+    descricao: "Faz parte da engrenagem. Bate ponto, segue ordens, entrega resultados. Rotina repetitiva e mecânica, cheia de promessas.",
+    bonusPericias: ["Orientar", "Profissão"],
+    habilidades: [{ nome: "Determinado", desc: "Sempre que for ajudar uma pessoa, você pode gastar 2 PE para aumentar o bônus de rolagem do seu aliado em +6 pontos adicionais." }],
+    passivas: []
+  },
+  "Militar": {
+    descricao: "Treinado para obedecer, resistir e, se preciso, matar. Serviu sob bandeiras em missões que jamais pôde questionar.",
+    bonusPericias: ["Tática", "Luta"],
+    habilidades: [],
+    passivas: [{ nome: "Potente", desc: "Você recebe +3 de DANO adicional usando armas corpo a corpo." }]
+  },
+  "Autônomo": {
+    descricao: "Não luta por ideais, luta por contrato. É pago para resolver problemas que ninguém quer assumir.",
+    bonusPericias: ["Iniciativa", "Intuição"],
+    habilidades: [{ nome: "Imediato", desc: "Apenas no começo de toda cena, você pode gastar 1 PE para ter uma ação adicional de movimento." }],
+    passivas: []
+  },
+  "Místico": {
+    descricao: "Já chamou entidades que não atendem qualquer um. Viu espíritos e escutou vozes que não cabem neste mundo.",
+    bonusPericias: ["Detectar Aura", "Ocultismo"],
+    habilidades: [],
+    passivas: [{ nome: "Fenda Paranormal", desc: "Você possui uma magia sobrenatural de Primeira Trava à sua escolha. Porém, começa a campanha com metade da Sanidade que a classe proporciona." }]
+  },
+  "Mendigo": {
+    descricao: "Perdeu tudo ou talvez nunca tenha tido. Viveu à margem, entre becos e pontes, ignorado por quem finge não ver.",
+    bonusPericias: ["Fortitude", "Percepção"],
+    habilidades: [],
+    passivas: [{ nome: "Resguardado", desc: "Você ganha +1 ponto de vida a cada 5 níveis alcançados." }]
+  },
+  "Administrador": {
+    descricao: "Aprendeu a linguagem do poder que se fala em escritórios com vista panorâmica e decisões que custam mais do que dinheiro.",
+    bonusPericias: ["Diplomacia", "Intimidação"],
+    habilidades: [{ nome: "Constância", desc: "Sempre que fizer um teste estendido de perícia, pode gastar 2 PE para receber +5 pontos no próximo teste." }],
+    passivas: []
+  },
+  "Bandido": {
+    descricao: "Cruzou a linha. Seja por fome, raiva, vingança ou ambição — escolheu ou foi empurrado para o outro lado da lei.",
+    bonusPericias: ["Crime", "Furtividade"],
+    habilidades: [],
+    passivas: [{ nome: "Mercadoria", desc: "No final de uma cena, você pode escolher 1 item que encontrou, podendo incluí-lo em seu inventário sem que ele conte no seu limite de espaço." }]
+  },
+  "Atleta": {
+    descricao: "Seu corpo é sua ferramenta, sua arma e sua prisão. Desde cedo, viveu sob a cobrança de treinos exaustivos e disciplina rígida.",
+    bonusPericias: ["Atletismo", "Agarrar"],
+    habilidades: [{ nome: "Empenho", desc: "Ao fazer um teste de atributo Agilidade ou Força, você pode gastar 2 PE para receber +4 pontos neste teste." }],
+    passivas: []
+  },
+  "Artista": {
+    descricao: "Enxerga o mundo por lentes que poucos entendem. Criar é necessidade, não escolha.",
+    bonusPericias: ["Artes", "Enganação"],
+    habilidades: [{ nome: "Celebridade", desc: "Uma vez por cena, você pode gastar 2 PE para determinar que um personagem envolvido no ambiente te reconheça. Você recebe +5 em testes de perícia interpessoais até o final da cena." }],
+    passivas: []
+  },
+  "Médico": {
+    descricao: "Já segurou mãos trêmulas no fim, viu olhos se apagarem enquanto tentava salvá-los. Formado entre livros, plantões e decisões impossíveis.",
+    bonusPericias: ["Medicina", "Primeiros Socorros"],
+    habilidades: [],
+    passivas: [{ nome: "Apoio", desc: "Sempre que curar uma pessoa, você adiciona os pontos de Intelecto no total de pontos de vida curados." }]
+  },
+  "Treinador": {
+    descricao: "Aprendeu que talento não basta. Seu trabalho sempre foi extrair o melhor dos outros.",
+    bonusPericias: ["Orientar", "Reflexo"],
+    habilidades: [{ nome: "Juízo", desc: "Quando faz um teste de perícia que tem como base Intelecto, você pode gastar 2 PE para receber +5 nestes testes." }],
+    passivas: []
+  },
+  "Psicólogo": {
+    descricao: "Aprendeu a ouvir o que ninguém quer dizer. Estudou comportamentos, padrões, traumas e silêncios.",
+    bonusPericias: [], // +2 em duas perícias à escolha do player
+    habilidades: [{ nome: "Crônicas", desc: "UMA VEZ POR DIA você pode fazer um teste de Intelecto (DT:12) para reconhecer pessoas, lugares, famílias e histórias que já tenha encontrado antes de nascer. Se passar na DT, recebe +5 PE temporários até o final da cena." }],
+    passivas: []
+  },
+  "Sem Gênese": {
+    descricao: "Sem gênese definida.",
+    bonusPericias: [],
+    habilidades: [],
+    passivas: []
+  }
+}
 
 export const ELEMENTOS = [
   { nome: "Nenhum", bloqueado: false },
