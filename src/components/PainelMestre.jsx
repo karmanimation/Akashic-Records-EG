@@ -40,7 +40,8 @@ export default function PainelMestre({ mesa, onVoltar }) {
 
   if (selecionada) {
     const ficha = fichas.find(f => f.uid === selecionada)
-    return <VisualizarFicha ficha={ficha} onVoltar={() => setSelecionada(null)} abaVer={abaVer} setAbaVer={setAbaVer} liberarCampo={(campo, liberar) => liberarCampo(selecionada, campo, liberar)} />
+    if (!ficha) return <Splash texto="CARREGANDO..." />
+    return <VisualizarFicha ficha={ficha} fichas={fichas} uid={selecionada} onVoltar={() => setSelecionada(null)} abaVer={abaVer} setAbaVer={setAbaVer} liberarCampo={(campo, liberar) => liberarCampo(selecionada, campo, liberar)} />
   }
 
   return (
@@ -130,7 +131,8 @@ const ABAS_VER = [
   { id: 'inventario', label: 'INVENTÁRIO' },
 ]
 
-function VisualizarFicha({ ficha, onVoltar, abaVer, setAbaVer, liberarCampo }) {
+function VisualizarFicha({ fichas, uid, onVoltar, abaVer, setAbaVer, liberarCampo }) {
+  const ficha = fichas.find(f => f.uid === uid) || {}
   const vidaAtual = ficha.reservas?.vida?.atual || 0
   const vidaMax = ficha.reservas?.vida?.max || 1
   const efAtual = ficha.reservas?.esforco?.atual || 0
@@ -303,8 +305,8 @@ function VisualizarFicha({ ficha, onVoltar, abaVer, setAbaVer, liberarCampo }) {
               <Titulo>Arsenal</Titulo>
               {(ficha.armas || []).map((arma, i) => (
                 <div key={i} style={{ border: '1px solid #1a1d35', padding: 10, borderRadius: 2, marginBottom: 8 }}>
-                  <div style={{ fontFamily: 'Cinzel,serif', fontSize: 14, color: '#c8cdd8', marginBottom: 6 }}>{arma.nome}</div>
-                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ fontFamily: 'Cinzel,serif', fontSize: 14, color: '#c8cdd8', marginBottom: 8 }}>{arma.nome}</div>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
                     {[['Dano', arma.dano], ['Perícia', arma.pericia], ['Crítico', arma.critico], ['Munição', arma.municao], ['Espaço', arma.espaco], ['Alcance', arma.alcance]].map(([l, v]) => v && (
                       <div key={l}>
                         <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#3a4560', letterSpacing: 1 }}>{l.toUpperCase()}</div>
@@ -312,6 +314,24 @@ function VisualizarFicha({ ficha, onVoltar, abaVer, setAbaVer, liberarCampo }) {
                       </div>
                     ))}
                   </div>
+                  {arma.tipoMunicao && arma.tipoMunicao !== 'Padrão' && (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                      <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#3a4560', letterSpacing: 1 }}>MUNIÇÃO:</div>
+                      <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#4a9aba', background: 'rgba(74,154,186,0.1)', border: '1px solid rgba(74,154,186,0.3)', padding: '2px 8px', borderRadius: 2 }}>
+                        {arma.tipoMunicao}{arma.tipoMunicao === 'Pesada' && arma.qtdMunicaoPesada ? ` · ${arma.qtdMunicaoPesada} balas (peso ${arma.qtdMunicaoPesada})` : ''}
+                      </span>
+                    </div>
+                  )}
+                  {(arma.acessorios || []).length > 0 && (
+                    <div>
+                      <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#3a4560', letterSpacing: 1, marginBottom: 4 }}>ACESSÓRIOS</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {(arma.acessorios || []).map(ac => (
+                          <span key={ac} style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#4a9aba', background: 'rgba(74,154,186,0.08)', border: '1px solid rgba(74,154,186,0.25)', padding: '2px 8px', borderRadius: 2 }}>{ac}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </Painel>

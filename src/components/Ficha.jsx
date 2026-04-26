@@ -52,7 +52,15 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
   const bloq = (campo) => isBloqueado(ficha, campo)
   const estagio = calcularEstagio(f.focos)
   const cargaMax = calcularCargaMax(f.focos.Força)
-  const pesoArmas = (f.armas || []).reduce((t, a) => t + (Number(a.espaco) || 0), 0)
+  const pesoArmas = (f.armas || []).reduce((t, a) => {
+    const pesoBase = Number(a.espaco) || 0
+    const pesoMunicao = a.tipoMunicao === 'Pesada' ? (Number(a.qtdMunicaoPesada) || 0) : 0
+    const pesoAcessorios = (a.acessorios || []).reduce((s, ac) => {
+      const info = ACESSORIOS_ARMA.find(x => x.nome === ac)
+      return s + (info?.peso || 0)
+    }, 0)
+    return t + pesoBase + pesoMunicao + pesoAcessorios
+  }, 0)
   const pesoInventario = (f.inventario || []).reduce((t, i) => t + (Number(i.peso) || 0) * (Number(i.qtd) || 1), 0)
   const pesoAtual = pesoArmas + pesoInventario
   const statusTotal = Object.values(f.focos).reduce((a, b) => a + b, 0)
@@ -767,18 +775,41 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                           {TIPOS_MUNICAO.map(m => <option key={m.nome}>{m.nome}</option>)}
                         </select>
                       </Campo>
-                      <Campo label="ACESSÓRIOS">
-                        <select onChange={e => {
-                          if (!e.target.value) return
-                          const atual = arma.acessorios || []
-                          if (!atual.includes(e.target.value)) updArma(arma.id,'acessorios',[...atual, e.target.value])
-                          e.target.value = ''
-                        }}>
-                          <option value="">+ Adicionar acessório...</option>
-                          {ACESSORIOS_ARMA.map(a => <option key={a.nome} value={a.nome}>{a.nome} (peso {a.peso})</option>)}
-                        </select>
-                      </Campo>
+                      {arma.tipoMunicao === 'Pesada' ? (
+                        <Campo label="QTD BALAS PESADAS (peso 1/bala)">
+                          <input type="number" min={0} value={arma.qtdMunicaoPesada || 0}
+                            onChange={e => updArma(arma.id,'qtdMunicaoPesada',Number(e.target.value))}
+                            style={{ fontFamily: 'Cinzel,serif' }} />
+                        </Campo>
+                      ) : (
+                        <Campo label="ACESSÓRIOS">
+                          <select onChange={e => {
+                            if (!e.target.value) return
+                            const atual = arma.acessorios || []
+                            if (!atual.includes(e.target.value)) updArma(arma.id,'acessorios',[...atual, e.target.value])
+                            e.target.value = ''
+                          }}>
+                            <option value="">+ Adicionar acessório...</option>
+                            {ACESSORIOS_ARMA.map(a => <option key={a.nome} value={a.nome}>{a.nome} (peso {a.peso})</option>)}
+                          </select>
+                        </Campo>
+                      )}
                     </div>
+                    {arma.tipoMunicao === 'Pesada' && (
+                      <div style={{ marginBottom: 8 }}>
+                        <Campo label="ACESSÓRIOS">
+                          <select onChange={e => {
+                            if (!e.target.value) return
+                            const atual = arma.acessorios || []
+                            if (!atual.includes(e.target.value)) updArma(arma.id,'acessorios',[...atual, e.target.value])
+                            e.target.value = ''
+                          }}>
+                            <option value="">+ Adicionar acessório...</option>
+                            {ACESSORIOS_ARMA.map(a => <option key={a.nome} value={a.nome}>{a.nome} (peso {a.peso})</option>)}
+                          </select>
+                        </Campo>
+                      </div>
+                    )}
                     {(arma.acessorios || []).length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
                         {(arma.acessorios || []).map(ac => (
