@@ -32,10 +32,17 @@ export function useFicha(userId, mesaId) {
     setSalvando(true)
     try {
       const ref_ = doc(db, 'mesas', mesaId, 'fichas', userId)
-      // Remove campos que só o Mestre controla antes de salvar
-      const { camposBloqueados, solicitandoExclusao, ...dadosJogador } = dados
-      // Usa merge:true para nunca sobrescrever camposBloqueados do Mestre
-      await setDoc(ref_, dadosJogador, { merge: true })
+      // Busca os campos do Mestre no Firebase para não sobrescrever
+      const snap = await getDoc(ref_)
+      const dadosFirebase = snap.exists() ? snap.data() : {}
+      // Monta o objeto a salvar: dados do jogador + campos controlados pelo Mestre preservados
+      const { camposBloqueados: _cb, solicitandoExclusao: _se, ...dadosJogador } = dados
+      const dadosFinal = {
+        ...dadosJogador,
+        camposBloqueados: dadosFirebase.camposBloqueados || {},
+        solicitandoExclusao: dadosFirebase.solicitandoExclusao || false,
+      }
+      await setDoc(ref_, dadosFinal)
       setUltimoSalvo(new Date())
     } finally { setSalvando(false) }
   }, [userId, mesaId])

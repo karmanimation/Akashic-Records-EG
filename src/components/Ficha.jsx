@@ -79,8 +79,15 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
     const base = CAPACIDADES_AUTOMATICAS[novaClasse]?.base || { habilidades: [], passivas: [] }
     setFicha(p => ({
       ...p, classe: novaClasse, trilha: '',
-      habilidades: [...(p.habilidades || []).filter(h => !h.automatica), ...base.habilidades.map(h => ({ id: Date.now() + Math.random(), nome: h.nome, desc: h.desc, automatica: true }))],
-      passivas: [...(p.passivas || []).filter(h => !h.automatica), ...base.passivas.map(h => ({ id: Date.now() + Math.random(), nome: h.nome, desc: h.desc, automatica: true }))]
+      // Remove só automáticas de classe (não de gênese, não manuais)
+      habilidades: [
+        ...(p.habilidades || []).filter(h => !h.automatica || h.deGenese),
+        ...base.habilidades.map(h => ({ id: Date.now() + Math.random(), nome: h.nome, desc: h.desc, automatica: true }))
+      ],
+      passivas: [
+        ...(p.passivas || []).filter(h => !h.automatica || h.deGenese),
+        ...base.passivas.map(h => ({ id: Date.now() + Math.random(), nome: h.nome, desc: h.desc, automatica: true }))
+      ]
     }))
   }
 
@@ -89,6 +96,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
     const trilhaData = CAPACIDADES_AUTOMATICAS[f.classe]?.trilhas?.[novaTrilha]
     setFicha(p => ({
       ...p, trilha: novaTrilha,
+      // Remove só as deTrilha, preserva tudo mais (classe, gênese, manuais)
       passivas: [
         ...(p.passivas || []).filter(h => !h.deTrilha),
         ...(trilhaData?.nivel30 ? [{ id: Date.now() + Math.random(), nome: trilhaData.nivel30.nome, desc: trilhaData.nivel30.desc, automatica: true, deTrilha: true }] : [])

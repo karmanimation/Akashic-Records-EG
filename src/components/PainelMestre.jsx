@@ -154,7 +154,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {fichas.filter(f => !f.ehNPC).map(f => (
-              <CardFichaResumida key={f.uid} ficha={f} onClick={() => { setSelecionada(f.uid); setAbaVer('geral') }} />
+              <CardFichaResumida key={f.uid} ficha={f} onClick={() => { setConfirmandoExclusao(null); setSelecionada(f.uid); setAbaVer('geral') }} />
             ))}
           </div>
         )
@@ -164,7 +164,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
       {abaPrincipal === 'npcs' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
-            <button onClick={() => setNpcSelecionado('novo')} style={{ background: 'rgba(200,169,110,0.08)', border: '1px solid rgba(200,169,110,0.3)', color: '#c8a96e', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, padding: '8px 16px', borderRadius: 2, cursor: 'pointer' }}>+ CRIAR NPC</button>
+            <button onClick={() => { setConfirmandoExclusao(null); setNpcSelecionado('novo') }} style={{ background: 'rgba(200,169,110,0.08)', border: '1px solid rgba(200,169,110,0.3)', color: '#c8a96e', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, padding: '8px 16px', borderRadius: 2, cursor: 'pointer' }}>+ CRIAR NPC</button>
           </div>
           {CATEGORIAS_NPC.map(cat => {
             const lista = npcs.filter(n => n.categoriaNPC === cat)
@@ -179,7 +179,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {lista.map(npc => (
-                    <div key={npc.id} onClick={() => setNpcSelecionado(npc.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(145deg,#0d0e18,#09090f)', border: `1px solid ${cor}33`, padding: '12px 16px', borderRadius: 2, cursor: 'pointer', transition: 'border-color 0.2s' }}
+                    <div key={npc.id} onClick={() => { setConfirmandoExclusao(null); setNpcSelecionado(npc.id) }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(145deg,#0d0e18,#09090f)', border: `1px solid ${cor}33`, padding: '12px 16px', borderRadius: 2, cursor: 'pointer', transition: 'border-color 0.2s' }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = `${cor}88`}
                       onMouseLeave={e => e.currentTarget.style.borderColor = `${cor}33`}>
                       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
