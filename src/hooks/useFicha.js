@@ -14,49 +14,79 @@ export function useFicha(userId, mesaId) {
     const ref_ = doc(db, 'mesas', mesaId, 'fichas', userId)
     return onSnapshot(ref_, snap => {
       if (snap.exists()) {
-        // NÃO usa fichaInicial() no spread — preserva tudo que vem do Firebase
-        const dados = snap.data()
-        setFicha(prev => {
-          // Só atualiza campos que vieram do Firebase, sem sobrescrever nada
-          return { ...fichaInicial(), ...dados }
-        })
+        setFicha({ ...fichaInicial(), ...snap.data() })
       } else {
         setFicha(fichaInicial())
       }
     })
   }, [userId, mesaId])
 
-  // Salva a ficha — preserva campos controlados pelo Mestre
   const salvar = useCallback(async (dados) => {
     if (!userId || !mesaId) return
     setSalvando(true)
     try {
       const ref_ = doc(db, 'mesas', mesaId, 'fichas', userId)
-      // Busca os campos do Mestre no Firebase para não sobrescrever
+      // Busca campos do Mestre antes de salvar para não perder
       const snap = await getDoc(ref_)
-      const dadosFirebase = snap.exists() ? snap.data() : {}
-      // Monta o objeto a salvar: dados do jogador + campos controlados pelo Mestre preservados
-      const { camposBloqueados: _cb, solicitandoExclusao: _se, ...dadosJogador } = dados
-      const dadosFinal = {
-        ...dadosJogador,
-        camposBloqueados: dadosFirebase.camposBloqueados || {},
-        solicitandoExclusao: dadosFirebase.solicitandoExclusao || false,
+      const existente = snap.exists() ? snap.data() : {}
+
+      // Detecta o que mudou para registrar no histórico
+      const mudancas = []
+      if (existente.nivel !== dados.nivel) mudancas.push(`Nível ${existente.nivel || 1} → ${dados.nivel}`)
+      if (existente.classe !== dados.classe) mudancas.push(`Classe: ${dados.classe}`)
+      if (existente.trilha !== dados.trilha && dados.trilha) mudancas.push(`Trilha: ${dados.trilha}`)
+      if (existente.genese !== dados.genese) mudancas.push(`Gênese: ${dados.genese}`)
+      const elemAntes = (existente.elementos || []).join(',')
+      const elemDepois = (dados.elementos || []).join(',')
+      if (elemAntes !== elemDepois) mudancas.push(`Elementos atualizados`)
+      const focosAntes = JSON.stringify(existente.focos || {})
+      const focosDepois = JSON.stringify(dados.focos || {})
+      if (focosAntes !== focosDepois) mudancas.push(`Atributos atualizados`)
+      const habAntes = (existente.habilidades || []).length
+      const habDepois = (dados.habilidades || []).length
+      if (habAntes !== habDepois) mudancas.push(`Habilidades: ${habDepois} capacidades`)
+      const passAntes = (existente.passivas || []).length
+      const passDepois = (dados.passivas || []).length
+      if (passAntes !== passDepois) mudancas.push(`Passivas: ${passDepois} capacidades`)
+      const armasAntes = (existente.armas || []).length
+      const armasDepois = (dados.armas || []).length
+      if (armasAntes !== armasDepois) mudancas.push(`Arsenal: ${armasDepois} armas`)
+      if (existente.finalizada !== dados.finalizada && dados.finalizada) mudancas.push(`Ficha finalizada`)
+
+      // Monta entrada do histórico
+      const novaEntrada = {
+        timestamp: new Date().toISOString(),
+        resumo: mudancas.length > 0 ? mudancas.join(' · ') : 'Ficha salva'
       }
-      await setDoc(ref_, dadosFinal)
+      const historicoAnterior = existente.historico || []
+      const historicoAtualizado = [novaEntrada, ...historicoAnterior].slice(0, 30) // máx 30 entradas
+
+      await setDoc(ref_, {
+        ...dados,
+        liberada: existente.liberada ?? false,
+        solicitandoExclusao: existente.solicitandoExclusao ?? false,
+        historico: historicoAtualizado,
+      })
       setUltimoSalvo(new Date())
     } finally { setSalvando(false) }
   }, [userId, mesaId])
 
-  // Jogador solicita exclusão
   const solicitarExclusao = useCallback(async () => {
     if (!userId || !mesaId) return
-    await updateDoc(doc(db, 'mesas', mesaId, 'fichas', userId), { solicitandoExclusao: true })
+    const ref_ = doc(db, 'mesas', mesaId, 'fichas', userId)
+    const snap = await getDoc(ref_)
+    if (snap.exists()) {
+      await updateDoc(ref_, { solicitandoExclusao: true })
+    }
   }, [userId, mesaId])
 
-  // Jogador cancela solicitação
   const cancelarExclusao = useCallback(async () => {
     if (!userId || !mesaId) return
-    await updateDoc(doc(db, 'mesas', mesaId, 'fichas', userId), { solicitandoExclusao: false })
+    const ref_ = doc(db, 'mesas', mesaId, 'fichas', userId)
+    const snap = await getDoc(ref_)
+    if (snap.exists()) {
+      await updateDoc(ref_, { solicitandoExclusao: false })
+    }
   }, [userId, mesaId])
 
   return { ficha, setFicha, salvar, salvando, ultimoSalvo, solicitarExclusao, cancelarExclusao }
@@ -74,21 +104,18 @@ export function useFichasMesa(mesaId) {
     })
   }, [mesaId])
 
-  // Mestre libera um campo — dot notation garante que só aquele campo é tocado
-  const liberarCampo = useCallback(async (uid, campo, liberar) => {
+  // Mestre libera TODA a ficha de uma vez
+  const liberarFicha = useCallback(async (uid) => {
     if (!mesaId || !uid) return
-    try {
-      const ref_ = doc(db, 'mesas', mesaId, 'fichas', uid)
-      if (liberar) {
-        // Libera o campo: seta false no Firebase
-        await updateDoc(ref_, { [`camposBloqueados.${campo}`]: false })
-      } else {
-        // Volta a bloquear: seta true
-        await updateDoc(ref_, { [`camposBloqueados.${campo}`]: true })
-      }
-    } catch (e) {
-      console.error('Erro ao liberar campo:', e)
-    }
+    const ref_ = doc(db, 'mesas', mesaId, 'fichas', uid)
+    await updateDoc(ref_, { liberada: true })
+  }, [mesaId])
+
+  // Mestre trava a ficha novamente
+  const travarFicha = useCallback(async (uid) => {
+    if (!mesaId || !uid) return
+    const ref_ = doc(db, 'mesas', mesaId, 'fichas', uid)
+    await updateDoc(ref_, { liberada: false })
   }, [mesaId])
 
   // Mestre exclui ficha
@@ -103,10 +130,9 @@ export function useFichasMesa(mesaId) {
     await updateDoc(doc(db, 'mesas', mesaId, 'fichas', uid), { solicitandoExclusao: false })
   }, [mesaId])
 
-  return { fichas, loading, liberarCampo, excluirFicha, rejeitarExclusao }
+  return { fichas, loading, liberarFicha, travarFicha, excluirFicha, rejeitarExclusao }
 }
 
-// Hook para NPCs do Mestre
 export function useNPCs(mesaId) {
   const [npcs, setNPCs] = useState([])
   const [loading, setLoading] = useState(true)

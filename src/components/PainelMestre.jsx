@@ -4,24 +4,11 @@ import { useFichasMesa, useNPCs } from '../hooks/useFicha'
 import { CLASSES, PERICIAS, GENESES, ELEMENTOS, TIPOS_ARMA, CATALOGO_ARMAS, CATALOGO_MAGIAS, CATALOGO_PODERES, ACESSORIOS_ARMA, TIPOS_MUNICAO, CARGA_POR_FORCA, CAPACIDADES_AUTOMATICAS, fichaInicial } from '../data/sistema'
 import { Painel, Titulo, Tag, Campo, Grid2, BtnLink, BtnPerigo } from './UI'
 
-const CAMPOS_BLOQUEAVEIS = [
-  { key: 'classe', label: 'Classe' },
-  { key: 'trilha', label: 'Trilha' },
-  { key: 'genese', label: 'Gênese' },
-  { key: 'elementos', label: 'Elementos' },
-  { key: 'focos', label: 'Atributos (Focos)' },
-  { key: 'pericias', label: 'Perícias' },
-  { key: 'habilidades', label: 'Habilidades' },
-  { key: 'passivas', label: 'Passivas' },
-  { key: 'magias', label: 'Magias' },
-  { key: 'poderes', label: 'Poderes' },
-]
-
 const CATEGORIAS_NPC = ['Boss', 'Principal', 'Inimigo', 'Aliado', 'Coadjuvante', 'Padrão']
 const COR_CATEGORIA = { Boss: '#9a3030', Principal: '#c8a96e', Inimigo: '#8a4a20', Aliado: '#3a8a50', Coadjuvante: '#4a9aba', 'Padrão': '#5a6580' }
 
 export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
-  const { fichas, loading, liberarCampo, excluirFicha, rejeitarExclusao } = useFichasMesa(mesa.id)
+  const { fichas, loading, liberarFicha, travarFicha, excluirFicha, rejeitarExclusao } = useFichasMesa(mesa.id)
   const { npcs, salvarNPC, excluirNPC } = useNPCs(mesa.id)
   const [selecionada, setSelecionada] = useState(null)
   const [abaVer, setAbaVer] = useState('geral')
@@ -45,7 +32,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
   if (selecionada) {
     const ficha = fichas.find(f => f.uid === selecionada)
     if (!ficha) return <Splash texto="CARREGANDO..." />
-    return <VisualizarFicha ficha={ficha} fichas={fichas} uid={selecionada} onVoltar={() => setSelecionada(null)} abaVer={abaVer} setAbaVer={setAbaVer} liberarCampo={(campo, liberar) => liberarCampo(selecionada, campo, liberar)} aprovarExclusao={() => aprovarExclusao(selecionada)} rejeitarExclusao={() => { rejeitarExclusao(selecionada) }} />
+    return <VisualizarFicha ficha={ficha} fichas={fichas} uid={selecionada} onVoltar={() => setSelecionada(null)} abaVer={abaVer} setAbaVer={setAbaVer} liberarFicha={() => liberarFicha(selecionada)} travarFicha={() => travarFicha(selecionada)} aprovarExclusao={() => aprovarExclusao(selecionada)} rejeitarExclusao={() => rejeitarExclusao(selecionada)} />
   }
 
   if (npcSelecionado !== null) {
@@ -266,7 +253,7 @@ const ABAS_VER = [
   { id: 'inventario', label: 'INVENTÁRIO' },
 ]
 
-function VisualizarFicha({ fichas, uid, onVoltar, abaVer, setAbaVer, liberarCampo, aprovarExclusao, rejeitarExclusao }) {
+function VisualizarFicha({ fichas, uid, onVoltar, abaVer, setAbaVer, liberarFicha, travarFicha, aprovarExclusao, rejeitarExclusao }) {
   const ficha = fichas.find(f => f.uid === uid) || {}
   const focos = ficha.focos || {}
   const [confirmando, setConfirmando] = useState(false)
@@ -327,34 +314,27 @@ function VisualizarFicha({ fichas, uid, onVoltar, abaVer, setAbaVer, liberarCamp
 
       {/* Painel de controle — sempre visível quando ficha finalizada */}
       {ficha.finalizada && (
-        <div style={{ marginBottom: 16, background: '#0d0e18', border: '1px solid rgba(200,169,110,0.3)', borderRadius: 2, padding: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 3, color: '#c8a96e', textTransform: 'uppercase' }}>Controle de Edição</div>
-            <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right,rgba(200,169,110,0.4),transparent)' }} />
+        <div style={{ marginBottom: 16, background: '#0d0e18', border: `1px solid ${ficha.liberada ? 'rgba(50,180,80,0.4)' : 'rgba(200,169,110,0.3)'}`, borderRadius: 2, padding: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 3, color: ficha.liberada ? '#5aaa70' : '#c8a96e', textTransform: 'uppercase', marginBottom: 4 }}>
+              {ficha.liberada ? '🔓 FICHA LIBERADA PARA EDIÇÃO' : '🔒 FICHA FINALIZADA — EDIÇÃO BLOQUEADA'}
+            </div>
+            <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 13, color: '#5a6580' }}>
+              {ficha.liberada ? 'O jogador pode editar classe, trilha, gênese, elementos, atributos, perícias e capacidades.' : 'O jogador só pode editar nome, foto, reservas, combate, arsenal e inventário.'}
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {CAMPOS_BLOQUEAVEIS.map(({ key, label }) => {
-              const liberado = ficha.camposBloqueados?.[key] === false
-              return (
-                <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', background: liberado ? 'rgba(50,180,80,0.06)' : '#09090f', border: `1px solid ${liberado ? 'rgba(50,180,80,0.35)' : '#1a2535'}`, borderRadius: 2 }}>
-                  <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 11, color: liberado ? '#5aaa70' : '#6a7590', letterSpacing: 1 }}>{label}</div>
-                  <button
-                    onClick={() => liberarCampo(key, !liberado)}
-                    style={{
-                      background: liberado ? 'rgba(50,180,80,0.15)' : 'rgba(200,169,110,0.08)',
-                      border: `1px solid ${liberado ? 'rgba(50,180,80,0.5)' : 'rgba(200,169,110,0.35)'}`,
-                      color: liberado ? '#6acc80' : '#c8a96e',
-                      fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1,
-                      padding: '8px 18px', borderRadius: 2, cursor: 'pointer',
-                      minWidth: 120, minHeight: 36,
-                      transition: 'all 0.2s'
-                    }}>
-                    {liberado ? '🔓 LIBERADO' : '🔒 LIBERAR'}
-                  </button>
-                </div>
-              )
-            })}
-          </div>
+          <button
+            onClick={() => ficha.liberada ? travarFicha() : liberarFicha()}
+            style={{
+              background: ficha.liberada ? 'rgba(154,48,48,0.15)' : 'rgba(50,180,80,0.12)',
+              border: `1px solid ${ficha.liberada ? '#9a3030' : 'rgba(50,180,80,0.5)'}`,
+              color: ficha.liberada ? '#c05050' : '#5aaa70',
+              fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1,
+              padding: '10px 20px', borderRadius: 2, cursor: 'pointer',
+              minWidth: 140, minHeight: 40, transition: 'all 0.2s'
+            }}>
+            {ficha.liberada ? '🔒 BLOQUEAR' : '🔓 LIBERAR TUDO'}
+          </button>
         </div>
       )}
       {abaVer === 'geral' && (
@@ -372,6 +352,25 @@ function VisualizarFicha({ fichas, uid, onVoltar, abaVer, setAbaVer, liberarCamp
           </Painel>
           {ficha.notas && <Painel><Titulo>História</Titulo><div style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: '#8a9ab0', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{ficha.notas}</div></Painel>}
           {ficha.anotacoesSessao && <Painel><Titulo cor="#4a9aba">Anotações de Sessão</Titulo><div style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: '#8a9ab0', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{ficha.anotacoesSessao}</div></Painel>}
+          <Painel>
+            <Titulo cor="#3a5060">Histórico de Atualizações</Titulo>
+            {(ficha.historico || []).length === 0 ? (
+              <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#2a3050' }}>Nenhuma atualização registrada ainda.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {(ficha.historico || []).map((entrada, i) => {
+                  const data = new Date(entrada.timestamp)
+                  const formatado = data.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+                  return (
+                    <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '7px 10px', background: i === 0 ? 'rgba(74,154,186,0.05)' : 'transparent', border: `1px solid ${i === 0 ? 'rgba(74,154,186,0.2)' : '#0f1020'}`, borderRadius: 2 }}>
+                      <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a5070', whiteSpace: 'nowrap', marginTop: 1, minWidth: 100 }}>{formatado}</div>
+                      <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 14, color: i === 0 ? '#7a9ab0' : '#4a5570', lineHeight: 1.4 }}>{entrada.resumo}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </Painel>
         </div>
       )}
 

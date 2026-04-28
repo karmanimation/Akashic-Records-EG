@@ -33,12 +33,13 @@ function podeAumentar(focos, attr) {
   return true
 }
 
-// Verifica se um campo está bloqueado para o jogador
+// Campo bloqueado = ficha finalizada E não liberada pelo Mestre
 function isBloqueado(ficha, campo) {
-  if (!ficha.finalizada) return false
-  // Mestre liberou explicitamente = false no Firebase
-  if (ficha.camposBloqueados?.[campo] === false) return false
-  // Se nunca foi tocado ou está true = bloqueado
+  if (!ficha.finalizada) return false  // não finalizada = tudo livre
+  if (ficha.liberada) return false      // Mestre liberou tudo = tudo livre
+  // Campos que nunca bloqueiam mesmo finalizada
+  const sempreLivres = ['nome', 'fotoURL', 'notas', 'anotacoesSessao', 'nivel', 'raca', 'modificacao', 'personalidade', 'reservas', 'combate', 'armas', 'protecao', 'inventario']
+  if (sempreLivres.includes(campo)) return false
   return true
 }
 
@@ -131,6 +132,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
   }
 
   const setFoco = (attr, v) => {
+    if (bloq('focos')) return
     if (v > f.focos[attr] && !podeAumentar(f.focos, attr)) return
     const novo = Math.max(0, Math.min(15, v))
     setFicha(p => ({ ...p, focos: { ...p.focos, [attr]: novo } }))
@@ -235,17 +237,10 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
     setConfirmandoFinalizar(false)
   }
 
-  // Estilos de campo bloqueado
-  const inputStyle = (campo) => ({
-    fontFamily: bloq(campo) ? 'Cinzel,serif' : undefined,
-    opacity: bloq(campo) ? 0.7 : 1,
-    cursor: bloq(campo) ? 'not-allowed' : undefined,
-    background: bloq(campo) ? 'rgba(5,5,12,0.5)' : undefined,
-  })
-
-  const Cadeado = ({ campo }) => bloq(campo) ? (
-    <span title="Bloqueado — solicite ao Mestre para editar" style={{ fontSize: 10, color: '#5a3030', marginLeft: 6, cursor: 'help' }}>🔒</span>
-  ) : null
+  // Estilo visual de campo bloqueado
+  const inputStyle = (campo) => bloq(campo) ? {
+    opacity: 0.6, cursor: 'not-allowed', background: 'rgba(5,5,12,0.5)'
+  } : {}
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 16px 60px', position: 'relative' }}>
@@ -452,7 +447,8 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
             {f.trilha && <Tag cor="#4a9aba">{f.trilha}</Tag>}
             {(f.elementos || []).map(el => <Tag key={el} cor="#6a3a8a">{el}</Tag>)}
             <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, color: corEstagio, background: `${corEstagio}15`, border: `1px solid ${corEstagio}44`, padding: '2px 8px', borderRadius: 2 }}>ESTÁGIO {estagio}</span>
-            {f.finalizada && <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, color: '#5a8050', background: 'rgba(50,120,60,0.1)', border: '1px solid rgba(50,120,60,0.3)', padding: '2px 8px', borderRadius: 2 }}>✓ FINALIZADA</span>}
+            {f.finalizada && !f.liberada && <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, color: '#5a8050', background: 'rgba(50,120,60,0.1)', border: '1px solid rgba(50,120,60,0.3)', padding: '2px 8px', borderRadius: 2 }}>✓ FINALIZADA</span>}
+            {f.finalizada && f.liberada && <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, color: '#4a9aba', background: 'rgba(74,154,186,0.1)', border: '1px solid rgba(74,154,186,0.3)', padding: '2px 8px', borderRadius: 2 }}>🔓 LIBERADA PELO MESTRE</span>}
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
@@ -520,7 +516,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                       <Campo label="Raça"><input value={f.raca} onChange={e => set('raca', e.target.value)} placeholder="—" /></Campo>
                       <Campo label="Modificação"><input value={f.modificacao} onChange={e => set('modificacao', e.target.value)} placeholder="—" /></Campo>
                       <Campo label="Nível"><input type="number" min={1} max={300} value={f.nivel} onChange={e => set('nivel', Number(e.target.value))} /></Campo>
-                      <Campo label={<>Estágio <Cadeado campo="estagio" /></>}>
+                      <Campo label={<>Estágio</>}>
                         <div style={{ background: 'rgba(5,5,12,0.9)', border: `1px solid ${corEstagio}44`, padding: '8px 12px', borderRadius: 2, fontFamily: 'Cinzel,serif', fontSize: 18, color: corEstagio, textAlign: 'center' }}>{estagio}</div>
                       </Campo>
                     </Grid2>
@@ -529,18 +525,18 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                 <Painel>
                   <Titulo>Classe & Origem</Titulo>
                   <Grid2>
-                    <Campo label={<>Classe <Cadeado campo="classe" /></>}>
+                    <Campo label={<>Classe</>}>
                       <select value={f.classe} onChange={e => selecionarClasse(e.target.value)} disabled={bloq('classe')} style={inputStyle('classe')}>
                         {Object.keys(CLASSES).map(c => <option key={c}>{c}</option>)}
                       </select>
                     </Campo>
-                    <Campo label={<>Trilha <Cadeado campo="trilha" /></>}>
+                    <Campo label={<>Trilha</>}>
                       <select value={f.trilha} onChange={e => selecionarTrilha(e.target.value)} disabled={bloq('trilha')} style={inputStyle('trilha')}>
                         <option value="">— Sem trilha —</option>
                         {CLASSES[f.classe]?.trilhas.map(t => <option key={t}>{t}</option>)}
                       </select>
                     </Campo>
-                    <Campo label={<>Gênese <Cadeado campo="genese" /></>}>
+                    <Campo label={<>Gênese</>}>
                       <select value={f.genese} onChange={e => !bloq('genese') && selecionarGenese(e.target.value)} disabled={bloq('genese')} style={inputStyle('genese')}>
                         {GENESES.map(g => <option key={g}>{g}</option>)}
                       </select>
@@ -569,7 +565,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
 
             {/* Elementos */}
             <Painel>
-              <Titulo>Elementos <Cadeado campo="elementos" /></Titulo>
+              <Titulo>Elementos</Titulo>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {ELEMENTOS.map(el => {
                   const selecionado = (f.elementos || []).includes(el.nome) && el.nome !== 'Nenhum'
@@ -654,7 +650,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
         {aba === 'atributos' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} className="anim">
             <Painel>
-              <Titulo>Focos <Cadeado campo="focos" /></Titulo>
+              <Titulo>Focos</Titulo>
               <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#5a6080', letterSpacing: 1, marginBottom: 12, lineHeight: 1.6 }}>
                 Estágio 1: 0–5 · Estágio 2: todos em 5 para avançar para 6 · Estágio 3: todos em 10 para avançar para 11
               </div>
@@ -730,7 +726,8 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
         {/* ─── PERÍCIAS ─── */}
         {aba === 'pericias' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} className="anim">
-            {f.finalizada && <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#5a3030', letterSpacing: 1, padding: '8px 12px', background: 'rgba(90,30,30,0.1)', border: '1px solid #5a202055', borderRadius: 2 }}>🔒 Ficha finalizada — solicite ao Mestre para alterar perícias.</div>}
+            {f.finalizada && !f.liberada && <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#5a3030', letterSpacing: 1, padding: '8px 12px', background: 'rgba(90,30,30,0.1)', border: '1px solid #5a202055', borderRadius: 2 }}>🔒 Ficha finalizada — peça ao Mestre para liberar a edição.</div>}
+            {f.finalizada && f.liberada && <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a6050', letterSpacing: 1, padding: '8px 12px', background: 'rgba(50,120,80,0.08)', border: '1px solid rgba(50,120,80,0.3)', borderRadius: 2 }}>🔓 Edição liberada pelo Mestre.</div>}
             {Object.entries(PERICIAS).map(([attr, lista]) => (
               <Painel key={attr}>
                 <Titulo>{attr} — Foco {f.focos[attr]}</Titulo>
@@ -771,7 +768,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                   <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 3, color: cor, textTransform: 'uppercase' }}>{label}</div>
                   <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#3a4560', letterSpacing: 1 }}>· {sub}</div>
                   <div style={{ flex: 1, height: 1, background: `linear-gradient(to right,${cor}55,transparent)` }} />
-                  <Cadeado campo={key} />
+                 
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
                   {(f[key] || []).map(item => (
