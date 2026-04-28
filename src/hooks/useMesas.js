@@ -78,7 +78,11 @@ export function useMesas(user) {
   }
 
   const excluirMesa = async (mesaId) => {
-    await deleteDoc(doc(db, 'mesas', mesaId))
+    try {
+      await deleteDoc(doc(db, 'mesas', mesaId))
+    } catch (e) {
+      alert('Erro ao excluir mesa: ' + e.message)
+    }
   }
 
   return { mesas, loading, criarMesa, entrarMesa, excluirMesa }

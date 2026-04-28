@@ -19,9 +19,33 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
   const [confirmandoMesa2, setConfirmandoMesa2] = useState(false)
 
   const aprovarExclusao = async (uid) => {
-    await excluirFicha(uid)
-    setConfirmandoExclusao(null)
-    setSelecionada(null)
+    if (!uid) return
+    try {
+      await excluirFicha(uid)
+      setConfirmandoExclusao(null)
+      setSelecionada(null)
+    } catch (e) {
+      alert('Erro ao excluir ficha: ' + e.message)
+    }
+  }
+
+  const handleRejeitarExclusao = async (uid) => {
+    if (!uid) return
+    try {
+      await rejeitarExclusao(uid)
+      setConfirmandoExclusao(null)
+    } catch (e) {
+      alert('Erro ao rejeitar: ' + e.message)
+    }
+  }
+
+  const handleExcluirMesa = async () => {
+    try {
+      setConfirmandoMesa2(false)
+      await excluirMesa()
+    } catch (e) {
+      alert('Erro ao excluir mesa: ' + e.message)
+    }
   }
 
   if (loading) return <Splash texto="CARREGANDO..." />
@@ -32,7 +56,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
   if (selecionada) {
     const ficha = fichas.find(f => f.uid === selecionada)
     if (!ficha) return <Splash texto="CARREGANDO..." />
-    return <VisualizarFicha ficha={ficha} fichas={fichas} uid={selecionada} onVoltar={() => setSelecionada(null)} abaVer={abaVer} setAbaVer={setAbaVer} liberarFicha={() => liberarFicha(selecionada)} travarFicha={() => travarFicha(selecionada)} aprovarExclusao={() => aprovarExclusao(selecionada)} rejeitarExclusao={() => rejeitarExclusao(selecionada)} />
+    return <VisualizarFicha ficha={ficha} fichas={fichas} uid={selecionada} onVoltar={() => setSelecionada(null)} abaVer={abaVer} setAbaVer={setAbaVer} liberarFicha={() => liberarFicha(selecionada)} travarFicha={() => travarFicha(selecionada)} aprovarExclusao={() => aprovarExclusao(selecionada)} rejeitarExclusao={() => handleRejeitarExclusao(selecionada)} />
   }
 
   if (npcSelecionado !== null) {
@@ -54,7 +78,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => aprovarExclusao(confirmandoExclusao)} style={{ flex: 1, background: 'rgba(154,48,48,0.15)', border: '1px solid #9a3030', color: '#c05050', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>SIM, EXCLUIR</button>
-              <button onClick={() => rejeitarExclusao(confirmandoExclusao)} style={{ flex: 1, background: 'transparent', border: '1px solid #2a3050', color: '#6a7090', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>REJEITAR</button>
+              <button onClick={() => handleRejeitarExclusao(confirmandoExclusao)} style={{ flex: 1, background: 'transparent', border: '1px solid #2a3050', color: '#6a7090', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>REJEITAR</button>
             </div>
           </div>
         </div>
@@ -97,7 +121,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
               Tem <strong>absoluta certeza</strong>? A mesa <strong style={{ color: '#c8a96e' }}>{mesa.nome}</strong> e todo seu conteúdo será apagado para sempre. Não há como desfazer.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={async () => { setConfirmandoMesa2(false); await excluirMesa() }} style={{ flex: 1, background: 'rgba(154,48,48,0.25)', border: '2px solid #9a3030', color: '#ff5050', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, padding: '12px', borderRadius: 2, cursor: 'pointer' }}>EXCLUIR PERMANENTEMENTE</button>
+              <button onClick={handleExcluirMesa} style={{ flex: 1, background: 'rgba(154,48,48,0.25)', border: '2px solid #9a3030', color: '#ff5050', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, padding: '12px', borderRadius: 2, cursor: 'pointer' }}>EXCLUIR PERMANENTEMENTE</button>
               <button onClick={() => setConfirmandoMesa2(false)} style={{ flex: 1, background: 'transparent', border: '1px solid #2a3050', color: '#6a7090', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, padding: '12px', borderRadius: 2, cursor: 'pointer' }}>CANCELAR</button>
             </div>
           </div>
@@ -114,7 +138,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setConfirmandoExclusao(f.uid)} style={{ background: 'rgba(154,48,48,0.15)', border: '1px solid #9a3030', color: '#c05050', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '5px 12px', borderRadius: 2, cursor: 'pointer' }}>APROVAR</button>
-                <button onClick={() => { rejeitarExclusao(f.uid); setConfirmandoExclusao(null) }} style={{ background: 'transparent', border: '1px solid #2a3050', color: '#5a6080', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '5px 12px', borderRadius: 2, cursor: 'pointer' }}>REJEITAR</button>
+                <button onClick={() => handleRejeitarExclusao(f.uid)} style={{ background: 'transparent', border: '1px solid #2a3050', color: '#5a6080', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '5px 12px', borderRadius: 2, cursor: 'pointer' }}>REJEITAR</button>
               </div>
             </div>
           ))}

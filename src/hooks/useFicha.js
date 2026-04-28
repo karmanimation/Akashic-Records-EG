@@ -104,18 +104,26 @@ export function useFichasMesa(mesaId) {
     })
   }, [mesaId])
 
-  // Mestre libera TODA a ficha de uma vez
+  // Mestre libera TODA a ficha — usa setDoc merge como fallback se updateDoc falhar
   const liberarFicha = useCallback(async (uid) => {
     if (!mesaId || !uid) return
     const ref_ = doc(db, 'mesas', mesaId, 'fichas', uid)
-    await updateDoc(ref_, { liberada: true })
+    try {
+      await updateDoc(ref_, { liberada: true })
+    } catch {
+      await setDoc(ref_, { liberada: true }, { merge: true })
+    }
   }, [mesaId])
 
   // Mestre trava a ficha novamente
   const travarFicha = useCallback(async (uid) => {
     if (!mesaId || !uid) return
     const ref_ = doc(db, 'mesas', mesaId, 'fichas', uid)
-    await updateDoc(ref_, { liberada: false })
+    try {
+      await updateDoc(ref_, { liberada: false })
+    } catch {
+      await setDoc(ref_, { liberada: false }, { merge: true })
+    }
   }, [mesaId])
 
   // Mestre exclui ficha
@@ -127,7 +135,12 @@ export function useFichasMesa(mesaId) {
   // Mestre rejeita exclusão
   const rejeitarExclusao = useCallback(async (uid) => {
     if (!mesaId || !uid) return
-    await updateDoc(doc(db, 'mesas', mesaId, 'fichas', uid), { solicitandoExclusao: false })
+    const ref_ = doc(db, 'mesas', mesaId, 'fichas', uid)
+    try {
+      await updateDoc(ref_, { solicitandoExclusao: false })
+    } catch {
+      await setDoc(ref_, { solicitandoExclusao: false }, { merge: true })
+    }
   }, [mesaId])
 
   return { fichas, loading, liberarFicha, travarFicha, excluirFicha, rejeitarExclusao }
