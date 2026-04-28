@@ -63,7 +63,6 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
     const npc = npcSelecionado === 'novo' ? fichaInicial() : npcs.find(n => n.id === npcSelecionado)
     return <EditarNPC npc={npc} isNovo={npcSelecionado === 'novo'} onVoltar={() => setNpcSelecionado(null)} salvarNPC={async (dados) => { await salvarNPC(dados); setNpcSelecionado(null) }} excluirNPC={async () => { await excluirNPC(npcSelecionado); setNpcSelecionado(null) }} />
   }
-  }
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', padding: '32px 16px' }}>
@@ -215,6 +214,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
       )}
     </div>
   )
+}
 
 // ─── Card de ficha resumida ───────────────────────────────────
 function CardFichaResumida({ ficha, onClick }) {
@@ -301,7 +301,7 @@ function VisualizarFicha({ fichas, uid, onVoltar, abaVer, setAbaVer, liberarFich
             <div style={{ fontFamily: 'Cinzel,serif', fontSize: 15, color: '#c05050', letterSpacing: 2, marginBottom: 10 }}>CONFIRMAR EXCLUSÃO</div>
             <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 14, color: '#8a9ab0', marginBottom: 18 }}>Excluir permanentemente a ficha de <strong style={{ color: '#c8a96e' }}>{ficha.nome}</strong>?</div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => { aprovarExclusao(); setConfirmando(false) }} style={{ flex: 1, background: 'rgba(154,48,48,0.15)', border: '1px solid #9a3030', color: '#c05050', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, padding: '9px', borderRadius: 2, cursor: 'pointer' }}>SIM, EXCLUIR</button>
+              <button onClick={() => { aprovarExclusao(uid); setConfirmando(false) }} style={{ flex: 1, background: 'rgba(154,48,48,0.15)', border: '1px solid #9a3030', color: '#c05050', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, padding: '9px', borderRadius: 2, cursor: 'pointer' }}>SIM, EXCLUIR</button>
               <button onClick={() => setConfirmando(false)} style={{ flex: 1, background: 'transparent', border: '1px solid #2a3050', color: '#6a7090', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, padding: '9px', borderRadius: 2, cursor: 'pointer' }}>CANCELAR</button>
             </div>
           </div>
@@ -537,14 +537,14 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
   const setReserva = (tipo, campo, v) => setDados(p => ({ ...p, reservas: { ...p.reservas, [tipo]: { ...p.reservas[tipo], [campo]: Number(v) } } }))
   const setPericia = (per, v) => setDados(p => ({ ...p, pericias: { ...p.pericias, [per]: Math.max(0, v) } }))
   const addCap = tipo => setDados(p => ({ ...p, [tipo]: [...(p[tipo] || []), { id: Date.now(), nome: '', desc: '' }] }))
-  const remCap = (tipo, id) => setDados(p => ({ ...p, [tipo]: p[tipo].filter(x => x.id !== id) }))
+  const remCap = (tipo, id) => setDados(p => ({ ...p, [tipo]: (p[tipo] || []).filter(x => x.id !== id) }))
   const updCap = (tipo, id, k, v) => setDados(p => ({ ...p, [tipo]: p[tipo].map(x => x.id === id ? { ...x, [k]: v } : x) }))
   const addArmaManual = () => setDados(p => ({ ...p, armas: [...(p.armas || []), { id: Date.now(), nome: '', tipo: '', dano: '', pericia: '', critico: '', municao: '', espaco: 0, alcance: '', grauAmeaca: 1, tipoMunicao: 'Padrão', acessorios: [] }] }))
   const addArmaDoCatalogo = (arma) => { setDados(p => ({ ...p, armas: [...(p.armas || []), { id: Date.now(), nome: arma.nome, tipo: categoriaArma, dano: arma.dano, pericia: arma.pericia, critico: arma.critico, municao: arma.municao, espaco: arma.espaco, alcance: arma.alcance, grauAmeaca: 1, tipoMunicao: 'Padrão', acessorios: [] }] })); setCatalogoArmaAberto(false) }
-  const remArma = id => setDados(p => ({ ...p, armas: p.armas.filter(a => a.id !== id) }))
+  const remArma = id => setDados(p => ({ ...p, armas: (p.armas || []).filter(a => a.id !== id) }))
   const updArma = (id, k, v) => setDados(p => ({ ...p, armas: p.armas.map(a => a.id === id ? { ...a, [k]: v } : a) }))
   const addItem = () => setDados(p => ({ ...p, inventario: [...(p.inventario || []), { id: Date.now(), item: '', qtd: 1, peso: 0, desc: '' }] }))
-  const remItem = id => setDados(p => ({ ...p, inventario: p.inventario.filter(i => i.id !== id) }))
+  const remItem = id => setDados(p => ({ ...p, inventario: (p.inventario || []).filter(i => i.id !== id) }))
   const updItem = (id, k, v) => setDados(p => ({ ...p, inventario: p.inventario.map(i => i.id === id ? { ...i, [k]: v } : i) }))
   const addCapDoCatalogo = (tipo, item) => { setDados(p => ({ ...p, [tipo]: [...(p[tipo] || []), { id: Date.now(), nome: item.nome, desc: item.desc, doCatalogo: true }] })); setCatalogoAberto(null) }
 
