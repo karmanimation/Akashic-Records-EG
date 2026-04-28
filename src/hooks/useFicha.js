@@ -32,26 +32,108 @@ export function useFicha(userId, mesaId) {
 
       // Detecta o que mudou para registrar no histórico
       const mudancas = []
-      if (existente.nivel !== dados.nivel) mudancas.push(`Nível ${existente.nivel || 1} → ${dados.nivel}`)
-      if (existente.classe !== dados.classe) mudancas.push(`Classe: ${dados.classe}`)
-      if (existente.trilha !== dados.trilha && dados.trilha) mudancas.push(`Trilha: ${dados.trilha}`)
-      if (existente.genese !== dados.genese) mudancas.push(`Gênese: ${dados.genese}`)
-      const elemAntes = (existente.elementos || []).join(',')
-      const elemDepois = (dados.elementos || []).join(',')
-      if (elemAntes !== elemDepois) mudancas.push(`Elementos atualizados`)
-      const focosAntes = JSON.stringify(existente.focos || {})
-      const focosDepois = JSON.stringify(dados.focos || {})
-      if (focosAntes !== focosDepois) mudancas.push(`Atributos atualizados`)
-      const habAntes = (existente.habilidades || []).length
-      const habDepois = (dados.habilidades || []).length
-      if (habAntes !== habDepois) mudancas.push(`Habilidades: ${habDepois} capacidades`)
-      const passAntes = (existente.passivas || []).length
-      const passDepois = (dados.passivas || []).length
-      if (passAntes !== passDepois) mudancas.push(`Passivas: ${passDepois} capacidades`)
-      const armasAntes = (existente.armas || []).length
-      const armasDepois = (dados.armas || []).length
-      if (armasAntes !== armasDepois) mudancas.push(`Arsenal: ${armasDepois} armas`)
-      if (existente.finalizada !== dados.finalizada && dados.finalizada) mudancas.push(`Ficha finalizada`)
+
+      // Dados básicos
+      if (existente.nivel !== dados.nivel) mudancas.push(`Nível: ${existente.nivel || 1} → ${dados.nivel}`)
+      if (existente.classe !== dados.classe) mudancas.push(`Classe: ${existente.classe || '—'} → ${dados.classe}`)
+      if (existente.trilha !== dados.trilha) mudancas.push(`Trilha: ${existente.trilha || '—'} → ${dados.trilha || '—'}`)
+      if (existente.genese !== dados.genese) mudancas.push(`Gênese: ${existente.genese || '—'} → ${dados.genese}`)
+      if (existente.raca !== dados.raca) mudancas.push(`Raça: ${existente.raca || '—'} → ${dados.raca || '—'}`)
+      if (existente.nome !== dados.nome) mudancas.push(`Nome: ${existente.nome || '—'} → ${dados.nome || '—'}`)
+
+      // Elementos
+      const elemAntes = [...(existente.elementos || [])].sort().join(', ')
+      const elemDepois = [...(dados.elementos || [])].sort().join(', ')
+      if (elemAntes !== elemDepois) mudancas.push(`Elementos: [${elemAntes || '—'}] → [${elemDepois || '—'}]`)
+
+      // Focos (atributos)
+      const focosAntes = existente.focos || {}
+      const focosDepois = dados.focos || {}
+      for (const attr of ['Força', 'Agilidade', 'Intelecto', 'Vigor', 'Domínio']) {
+        const antes = focosAntes[attr] ?? 0
+        const depois = focosDepois[attr] ?? 0
+        if (antes !== depois) mudancas.push(`${attr}: ${antes} → ${depois}`)
+      }
+
+      // Reservas
+      const res = ['vida', 'esforco', 'sanidade']
+      const resNomes = { vida: 'Vida', esforco: 'Esforço', sanidade: 'Sanidade' }
+      for (const r of res) {
+        const maxAntes = existente.reservas?.[r]?.max ?? 0
+        const maxDepois = dados.reservas?.[r]?.max ?? 0
+        const atualAntes = existente.reservas?.[r]?.atual ?? 0
+        const atualDepois = dados.reservas?.[r]?.atual ?? 0
+        if (maxAntes !== maxDepois) mudancas.push(`${resNomes[r]} máx: ${maxAntes} → ${maxDepois}`)
+        if (atualAntes !== atualDepois) mudancas.push(`${resNomes[r]} atual: ${atualAntes} → ${atualDepois}`)
+      }
+
+      // Combate
+      const combAntes = existente.combate || {}
+      const combDepois = dados.combate || {}
+      const combCampos = { resistencia: 'Resistência', defesa: 'Defesa', contraAtaque: 'Contra Ataque', esquiva: 'Esquiva', armaduraBase: 'Armadura Base', movimento: 'Movimento' }
+      for (const [k, label] of Object.entries(combCampos)) {
+        if ((combAntes[k] ?? 0) !== (combDepois[k] ?? 0)) mudancas.push(`${label}: ${combAntes[k] ?? 0} → ${combDepois[k] ?? 0}`)
+      }
+
+      // Perícias — detecta as que mudaram
+      const perAntes = existente.pericias || {}
+      const perDepois = dados.pericias || {}
+      const perMudadas = []
+      for (const per of Object.keys(perDepois)) {
+        const a = perAntes[per] ?? 0
+        const d = perDepois[per] ?? 0
+        if (a !== d) perMudadas.push(`${per}: ${a} → ${d}`)
+      }
+      if (perMudadas.length > 0) mudancas.push(`Perícias — ${perMudadas.join(', ')}`)
+
+      // Arsenal
+      const armasAntes = existente.armas || []
+      const armasDepois = dados.armas || []
+      if (armasAntes.length !== armasDepois.length) {
+        mudancas.push(`Arsenal: ${armasAntes.length} → ${armasDepois.length} armas`)
+      } else {
+        // Verifica armas modificadas
+        for (const armaD of armasDepois) {
+          const armaA = armasAntes.find(a => a.id === armaD.id)
+          if (armaA && armaA.nome !== armaD.nome) mudancas.push(`Arma renomeada: ${armaA.nome || '—'} → ${armaD.nome}`)
+        }
+      }
+
+      // Inventário
+      const invAntes = existente.inventario || []
+      const invDepois = dados.inventario || []
+      if (invAntes.length !== invDepois.length) {
+        mudancas.push(`Inventário: ${invAntes.length} → ${invDepois.length} itens`)
+      } else {
+        for (const itemD of invDepois) {
+          const itemA = invAntes.find(i => i.id === itemD.id)
+          if (itemA) {
+            if (itemA.qtd !== itemD.qtd) mudancas.push(`${itemD.item || 'Item'}: qtd ${itemA.qtd} → ${itemD.qtd}`)
+            if ((itemA.peso || 0) !== (itemD.peso || 0)) mudancas.push(`${itemD.item || 'Item'}: peso ${itemA.peso || 0} → ${itemD.peso || 0}`)
+          }
+        }
+      }
+
+      // Capacidades
+      const habAntes = (existente.habilidades || []).filter(h => !h.automatica).length
+      const habDepois = (dados.habilidades || []).filter(h => !h.automatica).length
+      if (habAntes !== habDepois) mudancas.push(`Habilidades: ${habAntes} → ${habDepois}`)
+
+      const passAntes = (existente.passivas || []).filter(h => !h.automatica).length
+      const passDepois = (dados.passivas || []).filter(h => !h.automatica).length
+      if (passAntes !== passDepois) mudancas.push(`Passivas: ${passAntes} → ${passDepois}`)
+
+      const magAntes = (existente.magias || []).length
+      const magDepois = (dados.magias || []).length
+      if (magAntes !== magDepois) mudancas.push(`Magias: ${magAntes} → ${magDepois}`)
+
+      const podAntes = (existente.poderes || []).length
+      const podDepois = (dados.poderes || []).length
+      if (podAntes !== podDepois) mudancas.push(`Poderes: ${podAntes} → ${podDepois}`)
+
+      // Finalização
+      if (!existente.finalizada && dados.finalizada) mudancas.push(`Ficha finalizada`)
+      if (existente.finalizada && !dados.finalizada) mudancas.push(`Ficha reaberta`)
 
       // Monta entrada do histórico
       const novaEntrada = {

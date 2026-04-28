@@ -63,6 +63,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
     const npc = npcSelecionado === 'novo' ? fichaInicial() : npcs.find(n => n.id === npcSelecionado)
     return <EditarNPC npc={npc} isNovo={npcSelecionado === 'novo'} onVoltar={() => setNpcSelecionado(null)} salvarNPC={async (dados) => { await salvarNPC(dados); setNpcSelecionado(null) }} excluirNPC={async () => { await excluirNPC(npcSelecionado); setNpcSelecionado(null) }} />
   }
+  }
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', padding: '32px 16px' }}>
@@ -656,6 +657,7 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
           </div>
         </div>
       )}
+      {confirmandoExclusao && !isNovo && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ background: '#0d0e18', border: '1px solid #9a3030', borderRadius: 2, padding: 28, maxWidth: 380, width: '100%' }}>
             <div style={{ fontFamily: 'Cinzel,serif', fontSize: 15, color: '#c05050', letterSpacing: 2, marginBottom: 10 }}>EXCLUIR NPC</div>
