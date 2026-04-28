@@ -215,7 +215,6 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
       )}
     </div>
   )
-}
 
 // ─── Card de ficha resumida ───────────────────────────────────
 function CardFichaResumida({ ficha, onClick }) {
