@@ -147,6 +147,12 @@ export function useFicha(userId, mesaId) {
         ...dados,
         liberada: existente.liberada ?? false,
         solicitandoExclusao: existente.solicitandoExclusao ?? false,
+        // Preserva manifestacao mas mantém os bônus que o jogador preencheu
+        manifestacao: {
+          ...(existente.manifestacao || {}),
+          focos: dados.manifestacao?.focos || existente.manifestacao?.focos || {},
+          pericias: dados.manifestacao?.pericias || existente.manifestacao?.pericias || {},
+        },
         historico: historicoAtualizado,
       })
       setUltimoSalvo(new Date())
@@ -225,7 +231,18 @@ export function useFichasMesa(mesaId) {
     }
   }, [mesaId])
 
-  return { fichas, loading, liberarFicha, travarFicha, excluirFicha, rejeitarExclusao }
+  // Mestre salva toda a configuração de manifestação
+  const salvarManifestacao = useCallback(async (uid, manifestacao) => {
+    if (!mesaId || !uid) return
+    const ref_ = doc(db, 'mesas', mesaId, 'fichas', uid)
+    try {
+      await updateDoc(ref_, { manifestacao })
+    } catch {
+      await setDoc(ref_, { manifestacao }, { merge: true })
+    }
+  }, [mesaId])
+
+  return { fichas, loading, liberarFicha, travarFicha, excluirFicha, rejeitarExclusao, salvarManifestacao }
 }
 
 export function useNPCs(mesaId) {

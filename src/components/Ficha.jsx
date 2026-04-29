@@ -10,6 +10,7 @@ const ABAS = [
   { id: 'capacidades', label: 'CAPACIDADES' },
   { id: 'combate', label: 'COMBATE' },
   { id: 'inventario', label: 'INVENTÁRIO' },
+  { id: 'manifestacao', label: 'MANIFESTAÇÃO' },
 ]
 
 function calcularEstagio(focos) {
@@ -53,9 +54,34 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
 
   const f = ficha
+  const man = f.manifestacao || { ativo: false, tipo: 'vazio', nome: '', liberado: false, focos: {}, pericias: {} }
+  const manAtivo = man.ativo === true
+  const corMan = man.tipo === 'energia' ? 'rgba(200,220,255,0.8)' : 'rgba(15,15,25,1)'
+  const corManTexto = man.tipo === 'energia' ? '#c0d0ff' : '#9090c0'
+  const corManBorda = man.tipo === 'energia'
+    ? '0 0 0 3px rgba(200,220,255,0.7), 0 0 50px 15px rgba(160,180,255,0.2), inset 0 0 80px rgba(160,180,255,0.06)'
+    : '0 0 0 3px rgba(5,5,15,0.98), 0 0 50px 20px rgba(0,0,0,0.98), inset 0 0 80px rgba(0,0,0,0.6)'
+
+  // Focos efetivos com bônus de manifestação
+  const focosEfetivos = Object.fromEntries(
+    Object.entries(f.focos || {}).map(([attr, val]) => [
+      attr,
+      val + (manAtivo ? (man.focos?.[attr] || 0) : 0)
+    ])
+  )
+
+  const setManFoco = (attr, v) => setFicha(p => ({
+    ...p,
+    manifestacao: { ...p.manifestacao, focos: { ...(p.manifestacao?.focos || {}), [attr]: Math.max(0, v) } }
+  }))
+  const setManPericia = (per, v) => setFicha(p => ({
+    ...p,
+    manifestacao: { ...p.manifestacao, pericias: { ...(p.manifestacao?.pericias || {}), [per]: Math.max(0, v) } }
+  }))
+
   const bloq = (campo) => isBloqueado(ficha, campo)
-  const estagio = calcularEstagio(f.focos)
-  const cargaMax = calcularCargaMax(f.focos.Força)
+  const estagio = calcularEstagio(f.focos) // estágio usa focos reais, não efetivos
+  const cargaMax = calcularCargaMax(focosEfetivos.Força)
   const pesoArmas = (f.armas || []).reduce((t, a) => {
     const pesoBase = Number(a.espaco) || 0
     const pesoMunicao = a.tipoMunicao === 'Pesada' ? (Number(a.qtdMunicaoPesada) || 0) : 0
@@ -68,8 +94,8 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
   const pesoInventario = (f.inventario || []).reduce((t, i) => t + (Number(i.peso) || 0) * (Number(i.qtd) || 1), 0)
   const pesoAtual = pesoArmas + pesoInventario
   const statusTotal = Object.values(f.focos).reduce((a, b) => a + b, 0)
-  const estamina = f.focos.Força + f.focos.Vigor
-  const reacao = f.focos.Agilidade + f.focos.Domínio
+  const estamina = focosEfetivos.Força + focosEfetivos.Vigor
+  const reacao = focosEfetivos.Agilidade + focosEfetivos.Domínio
   const corEstagio = estagio === 3 ? '#9a3030' : estagio === 2 ? '#4a9aba' : '#c8a96e'
 
   const set = (k, v) => setFicha(p => ({ ...p, [k]: v }))
@@ -243,7 +269,11 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
   } : {}
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 16px 60px', position: 'relative' }}>
+    <div style={{
+      maxWidth: 960, margin: '0 auto', padding: '0 16px 60px', position: 'relative',
+      transition: 'box-shadow 0.5s ease',
+      boxShadow: manAtivo ? corManBorda : 'none',
+    }}>
 
       {/* Modal confirmação finalizar */}
       {confirmandoFinalizar && (
@@ -449,6 +479,18 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
             <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, color: corEstagio, background: `${corEstagio}15`, border: `1px solid ${corEstagio}44`, padding: '2px 8px', borderRadius: 2 }}>ESTÁGIO {estagio}</span>
             {f.finalizada && !f.liberada && <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, color: '#5a8050', background: 'rgba(50,120,60,0.1)', border: '1px solid rgba(50,120,60,0.3)', padding: '2px 8px', borderRadius: 2 }}>✓ FINALIZADA</span>}
             {f.finalizada && f.liberada && <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2, color: '#4a9aba', background: 'rgba(74,154,186,0.1)', border: '1px solid rgba(74,154,186,0.3)', padding: '2px 8px', borderRadius: 2 }}>🔓 LIBERADA PELO MESTRE</span>}
+            {manAtivo && (
+              <span style={{
+                fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 2,
+                color: man.tipo === 'energia' ? '#c8d8ff' : '#8080a0',
+                background: man.tipo === 'energia' ? 'rgba(180,200,255,0.08)' : 'rgba(0,0,10,0.6)',
+                border: `1px solid ${man.tipo === 'energia' ? 'rgba(200,220,255,0.5)' : 'rgba(60,60,90,0.7)'}`,
+                padding: '2px 8px', borderRadius: 2,
+                boxShadow: man.tipo === 'energia' ? '0 0 8px rgba(180,200,255,0.3)' : '0 0 8px rgba(0,0,0,0.8)',
+              }}>
+                {man.tipo === 'energia' ? '✦' : '◈'} MANIFESTAÇÃO {man.nome ? `— ${man.nome}` : ''}
+              </span>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
@@ -656,30 +698,36 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {Object.entries(f.focos).map(([attr, val]) => {
+                  const bonus = manAtivo ? (man.focos?.[attr] || 0) : 0
+                  const valEfetivo = val + bonus
                   const podeUp = podeAumentar(f.focos, attr)
                   return (
                     <div key={attr} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <div style={{ width: 92, fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, color: '#8a9ab0' }}>{attr.toUpperCase()}</div>
+                      <div style={{ width: 92, fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, color: bonus > 0 ? '#b060e0' : '#8a9ab0' }}>{attr.toUpperCase()}</div>
                       <div style={{ display: 'flex', gap: 5 }}>
                         {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(n => {
-                          const ativo = val >= n
-                          const cor = n <= 5 ? '#c8a96e' : n <= 10 ? '#4a9aba' : '#9a3030'
+                          const ativoBase = val >= n
+                          const ativoBonus = bonus > 0 && n > val && n <= valEfetivo
+                          const cor = ativoBonus ? '#b060e0' : n <= 5 ? '#c8a96e' : n <= 10 ? '#4a9aba' : '#9a3030'
                           const sz = n > 10 ? 20 : n > 5 ? 24 : 28
                           return (
                             <button key={n} onClick={() => setFoco(attr, val === n ? n - 1 : n)} disabled={bloq('focos')} style={{
                               width: sz, height: sz, borderRadius: '50%',
-                              border: `1px solid ${ativo ? cor : '#1a2030'}`,
-                              background: ativo ? `${cor}20` : 'transparent',
-                              color: ativo ? cor : '#1a2030',
+                              border: `1px solid ${(ativoBase || ativoBonus) ? cor : '#1a2030'}`,
+                              background: ativoBonus ? 'rgba(160,80,220,0.15)' : ativoBase ? `${cor}20` : 'transparent',
+                              color: (ativoBase || ativoBonus) ? cor : '#1a2030',
                               fontSize: n > 5 ? 9 : 13,
-                              boxShadow: ativo ? `0 0 8px ${cor}33` : 'none',
+                              boxShadow: ativoBonus ? `0 0 10px rgba(160,80,220,0.5)` : ativoBase ? `0 0 8px ${cor}33` : 'none',
                               cursor: bloq('focos') ? 'not-allowed' : 'pointer', transition: 'all 0.15s',
-                              opacity: !ativo && !podeUp && n === val + 1 ? 0.25 : 1
-                            }}>{ativo ? '◆' : '◇'}</button>
+                              opacity: !ativoBase && !ativoBonus && !podeUp && n === val + 1 ? 0.25 : 1
+                            }}>{(ativoBase || ativoBonus) ? '◆' : '◇'}</button>
                           )
                         })}
                       </div>
-                      <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, fontWeight: 700, color: val > 0 ? '#c8a96e' : '#2a3050', minWidth: 26, textAlign: 'center' }}>{val}</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                        <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, fontWeight: 700, color: bonus > 0 ? '#b060e0' : val > 0 ? '#c8a96e' : '#2a3050', minWidth: 26, textAlign: 'center' }}>{valEfetivo}</div>
+                        {bonus > 0 && <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#b060e0', opacity: 0.8 }}>(+{bonus})</div>}
+                      </div>
                     </div>
                   )
                 })}
@@ -734,14 +782,19 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {lista.map(per => {
                     const val = f.pericias[per] || 0
+                    const bonus = manAtivo ? (man.pericias?.[per] || 0) : 0
+                    const valEfetivo = val + bonus
                     return (
-                      <div key={per} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 2, transition: 'background 0.15s' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(200,169,110,0.03)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <span style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: val > 0 ? '#c8cdd8' : '#4a5070' }}>{per}</span>
+                      <div key={per} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 2, transition: 'background 0.15s', background: bonus > 0 ? 'rgba(160,80,220,0.04)' : 'transparent' }}
+                        onMouseEnter={e => e.currentTarget.style.background = bonus > 0 ? 'rgba(160,80,220,0.08)' : 'rgba(200,169,110,0.03)'}
+                        onMouseLeave={e => e.currentTarget.style.background = bonus > 0 ? 'rgba(160,80,220,0.04)' : 'transparent'}>
+                        <span style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: bonus > 0 ? '#b060e0' : val > 0 ? '#c8cdd8' : '#4a5070' }}>{per}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <button onClick={() => setPericia(per, val - 1)} disabled={bloq('pericias')} style={{ background: 'transparent', border: '1px solid #1a2030', color: bloq('pericias') ? '#2a2a2a' : '#4a5070', width: 20, height: 20, borderRadius: 2, cursor: bloq('pericias') ? 'not-allowed' : 'pointer', fontSize: 12 }}>−</button>
-                          <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 13, color: val > 0 ? '#c8a96e' : '#2a3050', minWidth: 28, textAlign: 'center', fontWeight: val > 0 ? 'bold' : 'normal' }}>{val > 0 ? `+${val}` : '—'}</div>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, minWidth: 44, justifyContent: 'center' }}>
+                            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 13, color: bonus > 0 ? '#b060e0' : val > 0 ? '#c8a96e' : '#2a3050', fontWeight: (val > 0 || bonus > 0) ? 'bold' : 'normal' }}>{valEfetivo > 0 ? `+${valEfetivo}` : '—'}</div>
+                            {bonus > 0 && <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#b060e0', opacity: 0.8 }}>(+{bonus})</div>}
+                          </div>
                           <button onClick={() => setPericia(per, val + 1)} disabled={bloq('pericias')} style={{ background: 'transparent', border: '1px solid #1a2030', color: bloq('pericias') ? '#2a2a2a' : '#4a5070', width: 20, height: 20, borderRadius: 2, cursor: bloq('pericias') ? 'not-allowed' : 'pointer', fontSize: 12 }}>+</button>
                         </div>
                       </div>
@@ -950,6 +1003,91 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                 ))}
               </div>
               <BtnLink onClick={addItem}>+ ITEM</BtnLink>
+            </Painel>
+          </div>
+        )}
+
+        {aba === 'manifestacao' && (
+          <div className="anim" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Banner de status */}
+            <div style={{
+              padding: '14px 18px', borderRadius: 2,
+              background: manAtivo
+                ? man.tipo === 'energia' ? 'rgba(160,180,255,0.08)' : 'rgba(0,0,15,0.7)'
+                : 'rgba(5,5,12,0.5)',
+              border: `1px solid ${manAtivo ? man.tipo === 'energia' ? 'rgba(200,220,255,0.4)' : 'rgba(60,60,100,0.6)' : '#1a1d35'}`,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontFamily: 'Cinzel,serif', fontSize: 13, letterSpacing: 2, color: manAtivo ? corManTexto : '#3a4560', marginBottom: 4 }}>
+                  {manAtivo ? `✦ MANIFESTAÇÃO ATIVA — ${man.nome || 'Sem nome'}` : '◈ MANIFESTAÇÃO INATIVA'}
+                </div>
+                <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 1 }}>
+                  {manAtivo ? `TIPO: ${man.tipo === 'energia' ? 'ENERGIA PURA' : 'VAZIO'}` : 'O Mestre ativa a Manifestação no painel.'}
+                </div>
+              </div>
+              {manAtivo && (
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: man.tipo === 'energia' ? 'radial-gradient(circle, rgba(200,220,255,0.3), transparent)' : 'radial-gradient(circle, rgba(0,0,20,0.9), transparent)', border: `1px solid ${man.tipo === 'energia' ? 'rgba(200,220,255,0.5)' : 'rgba(60,60,100,0.5)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: corManTexto }}>
+                  {man.tipo === 'energia' ? '✦' : '◈'}
+                </div>
+              )}
+            </div>
+
+            {/* Bônus de Atributos */}
+            <Painel>
+              <Titulo cor={manAtivo ? corManTexto : '#3a4560'}>Bônus de Atributos</Titulo>
+              {!man.liberado ? (
+                <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 14, color: '#3a4560', fontStyle: 'italic' }}>
+                  Aguardando o Mestre liberar o preenchimento.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {Object.keys(f.focos || {}).map(attr => {
+                    const val = man.focos?.[attr] || 0
+                    return (
+                      <div key={attr} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: val > 0 ? 'rgba(160,180,255,0.04)' : 'transparent', border: `1px solid ${val > 0 ? 'rgba(160,180,255,0.2)' : '#1a1d35'}`, borderRadius: 2 }}>
+                        <span style={{ fontFamily: 'Cinzel,serif', fontSize: 12, letterSpacing: 2, color: val > 0 ? corManTexto : '#5a6580' }}>{attr.toUpperCase()}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <button onClick={() => setManFoco(attr, val - 1)} style={{ background: 'transparent', border: '1px solid #1a2030', color: '#4a5070', width: 24, height: 24, borderRadius: 2, cursor: 'pointer', fontSize: 14 }}>−</button>
+                          <div style={{ fontFamily: 'Cinzel,serif', fontSize: 18, fontWeight: 700, color: val > 0 ? corManTexto : '#2a3050', minWidth: 32, textAlign: 'center' }}>{val > 0 ? `+${val}` : '—'}</div>
+                          <button onClick={() => setManFoco(attr, val + 1)} style={{ background: 'transparent', border: '1px solid #1a2030', color: '#4a5070', width: 24, height: 24, borderRadius: 2, cursor: 'pointer', fontSize: 14 }}>+</button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </Painel>
+
+            {/* Bônus de Perícias */}
+            <Painel>
+              <Titulo cor={manAtivo ? corManTexto : '#3a4560'}>Bônus de Perícias</Titulo>
+              {!man.liberado ? (
+                <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 14, color: '#3a4560', fontStyle: 'italic' }}>
+                  Aguardando o Mestre liberar o preenchimento.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {Object.entries(PERICIAS).map(([attr, lista]) => (
+                    <div key={attr}>
+                      <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#2a3050', letterSpacing: 2, padding: '8px 0 4px' }}>{attr.toUpperCase()}</div>
+                      {lista.map(per => {
+                        const val = man.pericias?.[per] || 0
+                        return (
+                          <div key={per} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', borderRadius: 2, background: val > 0 ? 'rgba(160,180,255,0.04)' : 'transparent' }}>
+                            <span style={{ fontFamily: 'Crimson Text,serif', fontSize: 14, color: val > 0 ? corManTexto : '#4a5070' }}>{per}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <button onClick={() => setManPericia(per, val - 1)} style={{ background: 'transparent', border: '1px solid #1a2030', color: '#4a5070', width: 20, height: 20, borderRadius: 2, cursor: 'pointer', fontSize: 12 }}>−</button>
+                              <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 12, color: val > 0 ? corManTexto : '#2a3050', minWidth: 28, textAlign: 'center' }}>{val > 0 ? `+${val}` : '—'}</div>
+                              <button onClick={() => setManPericia(per, val + 1)} style={{ background: 'transparent', border: '1px solid #1a2030', color: '#4a5070', width: 20, height: 20, borderRadius: 2, cursor: 'pointer', fontSize: 12 }}>+</button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
             </Painel>
           </div>
         )}
