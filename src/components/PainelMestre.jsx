@@ -8,7 +8,7 @@ const CATEGORIAS_NPC = ['Boss', 'Principal', 'Inimigo', 'Aliado', 'Coadjuvante',
 const COR_CATEGORIA = { Boss: '#9a3030', Principal: '#c8a96e', Inimigo: '#8a4a20', Aliado: '#3a8a50', Coadjuvante: '#4a9aba', 'Padrão': '#5a6580' }
 
 export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
-  const { fichas, loading, liberarFicha, travarFicha, excluirFicha, rejeitarExclusao } = useFichasMesa(mesa.id)
+  const { fichas, loading, liberarFicha, travarFicha, excluirFicha, rejeitarExclusao, salvarManifestacao } = useFichasMesa(mesa.id)
   const { npcs, salvarNPC, excluirNPC } = useNPCs(mesa.id)
   const [selecionada, setSelecionada] = useState(null)
   const [abaVer, setAbaVer] = useState('geral')
@@ -56,7 +56,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
   if (selecionada) {
     const ficha = fichas.find(f => f.uid === selecionada)
     if (!ficha) return <Splash texto="CARREGANDO..." />
-    return <VisualizarFicha ficha={ficha} fichas={fichas} uid={selecionada} onVoltar={() => setSelecionada(null)} abaVer={abaVer} setAbaVer={setAbaVer} liberarFicha={() => liberarFicha(selecionada)} travarFicha={() => travarFicha(selecionada)} aprovarExclusao={() => aprovarExclusao(selecionada)} rejeitarExclusao={() => handleRejeitarExclusao(selecionada)} />
+    return <VisualizarFicha ficha={ficha} fichas={fichas} uid={selecionada} onVoltar={() => setSelecionada(null)} abaVer={abaVer} setAbaVer={setAbaVer} liberarFicha={() => liberarFicha(selecionada)} travarFicha={() => travarFicha(selecionada)} aprovarExclusao={() => aprovarExclusao(selecionada)} rejeitarExclusao={() => handleRejeitarExclusao(selecionada)} salvarManifestacao={(man) => salvarManifestacao(selecionada, man)} />
   }
 
   if (npcSelecionado !== null) {
@@ -275,9 +275,10 @@ const ABAS_VER = [
   { id: 'capacidades', label: 'CAPACIDADES' },
   { id: 'combate', label: 'COMBATE' },
   { id: 'inventario', label: 'INVENTÁRIO' },
+  { id: 'manifestacao', label: 'MANIFESTAÇÃO' },
 ]
 
-function VisualizarFicha({ fichas, uid, onVoltar, abaVer, setAbaVer, liberarFicha, travarFicha, aprovarExclusao, rejeitarExclusao }) {
+function VisualizarFicha({ fichas, uid, onVoltar, abaVer, setAbaVer, liberarFicha, travarFicha, aprovarExclusao, rejeitarExclusao, salvarManifestacao }) {
   const ficha = fichas.find(f => f.uid === uid) || {}
   const focos = ficha.focos || {}
   const [confirmando, setConfirmando] = useState(false)
@@ -516,11 +517,98 @@ function VisualizarFicha({ fichas, uid, onVoltar, abaVer, setAbaVer, liberarFich
           )}
         </Painel>
       )}
+      {abaVer === 'manifestacao' && (() => {
+        const man = ficha.manifestacao || { ativo: false, tipo: 'vazio', nome: '', liberado: false, focos: {}, pericias: {} }
+        const corMan = man.tipo === 'energia' ? '#c0d0ff' : '#8080c0'
+        const salvar = (patch) => salvarManifestacao({ ...man, ...patch })
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <Painel>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 14, height: 1, background: corMan, opacity: 0.6 }} />
+                <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 3, color: corMan, textTransform: 'uppercase' }}>Manifestação</div>
+                <div style={{ flex: 1, height: 1, background: `linear-gradient(to right,${corMan}55,transparent)` }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <Campo label="NOME DA MANIFESTAÇÃO">
+                  <input value={man.nome || ''} onChange={e => salvar({ nome: e.target.value })} placeholder="Ex: Kairos, Entidade do Vazio..." />
+                </Campo>
+                <div>
+                  <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2, marginBottom: 8 }}>TIPO</div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    {[['vazio', '◈ VAZIO', 'rgba(5,5,20,0.9)', 'rgba(80,80,150,0.6)'], ['energia', '✦ ENERGIA PURA', 'rgba(160,180,255,0.08)', 'rgba(200,220,255,0.5)']].map(([tipo, label, bg, borda]) => (
+                      <button key={tipo} onClick={() => salvar({ tipo })} style={{
+                        flex: 1, padding: '10px', borderRadius: 2, cursor: 'pointer', transition: 'all 0.2s',
+                        background: man.tipo === tipo ? bg : 'transparent',
+                        border: `1px solid ${man.tipo === tipo ? borda : '#1a2035'}`,
+                        color: man.tipo === tipo ? (tipo === 'energia' ? '#c0d0ff' : '#8080c0') : '#3a4560',
+                        fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 2,
+                        boxShadow: man.tipo === tipo ? (tipo === 'energia' ? '0 0 12px rgba(160,180,255,0.2)' : '0 0 12px rgba(0,0,20,0.8)') : 'none',
+                      }}>{label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10, paddingTop: 8, borderTop: '1px solid #1a1d35' }}>
+                  <button onClick={() => salvar({ liberado: !man.liberado })} style={{
+                    flex: 1, padding: '10px', borderRadius: 2, cursor: 'pointer', transition: 'all 0.2s',
+                    background: man.liberado ? 'rgba(200,169,110,0.1)' : 'transparent',
+                    border: `1px solid ${man.liberado ? 'rgba(200,169,110,0.4)' : '#1a2035'}`,
+                    color: man.liberado ? '#c8a96e' : '#3a4560',
+                    fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1,
+                  }}>
+                    {man.liberado ? '📝 PREENCHIMENTO LIBERADO' : '📝 LIBERAR PREENCHIMENTO'}
+                  </button>
+                  <button onClick={() => salvar({ ativo: !man.ativo })} style={{
+                    flex: 1, padding: '10px', borderRadius: 2, cursor: 'pointer', transition: 'all 0.2s',
+                    background: man.ativo ? (man.tipo === 'energia' ? 'rgba(160,180,255,0.1)' : 'rgba(5,5,20,0.8)') : 'transparent',
+                    border: `1px solid ${man.ativo ? (man.tipo === 'energia' ? 'rgba(200,220,255,0.5)' : 'rgba(80,80,150,0.5)') : '#1a2035'}`,
+                    color: man.ativo ? corMan : '#3a4560',
+                    fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1,
+                    boxShadow: man.ativo ? (man.tipo === 'energia' ? '0 0 10px rgba(160,180,255,0.2)' : '0 0 10px rgba(0,0,20,0.9)') : 'none',
+                  }}>
+                    {man.ativo ? '✦ MANIFESTAÇÃO ATIVA' : '◈ ATIVAR MANIFESTAÇÃO'}
+                  </button>
+                </div>
+              </div>
+            </Painel>
+
+            {(Object.values(man.focos || {}).some(v => v > 0) || Object.values(man.pericias || {}).some(v => v > 0)) && (
+              <Painel>
+                <Titulo cor={corMan}>Bônus Preenchidos pelo Jogador</Titulo>
+                {Object.entries(man.focos || {}).filter(([, v]) => v > 0).length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2, marginBottom: 6 }}>ATRIBUTOS</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {Object.entries(man.focos || {}).filter(([, v]) => v > 0).map(([attr, v]) => (
+                        <div key={attr} style={{ background: '#09090f', border: `1px solid ${corMan}44`, padding: '6px 12px', borderRadius: 2, display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <span style={{ fontFamily: 'Cinzel,serif', fontSize: 11, color: '#6a7090' }}>{attr}</span>
+                          <span style={{ fontFamily: 'Cinzel,serif', fontSize: 15, fontWeight: 700, color: corMan }}>+{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {Object.entries(man.pericias || {}).filter(([, v]) => v > 0).length > 0 && (
+                  <div>
+                    <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2, marginBottom: 6 }}>PERÍCIAS</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {Object.entries(man.pericias || {}).filter(([, v]) => v > 0).map(([per, v]) => (
+                        <div key={per} style={{ background: '#09090f', border: `1px solid ${corMan}44`, padding: '6px 12px', borderRadius: 2, display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <span style={{ fontFamily: 'Crimson Text,serif', fontSize: 14, color: '#6a7090' }}>{per}</span>
+                          <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 13, fontWeight: 700, color: corMan }}>+{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Painel>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }
-
-// ─── Editor de NPC ───────────────────────────────────────────
 function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
   const [dados, setDados] = useState({ ...fichaInicial(), categoriaNPC: 'Padrão', ...npc })
   const [salvando, setSalvando] = useState(false)
