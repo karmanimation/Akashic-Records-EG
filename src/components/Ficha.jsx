@@ -536,7 +536,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} className="anim">
             {/* Foto + dados básicos lado a lado (funciona no mobile) */}
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <div style={{ width: 130, flexShrink: 0 }}>
+              <div style={{ width: 150, flexShrink: 0 }}>
                 <div style={{ width: '100%', aspectRatio: '3/4', background: '#09090f', border: '1px solid #1a1d35', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', clipPath: 'polygon(8px 0%,100% 0%,100% calc(100% - 8px),calc(100% - 8px) 100%,0% 100%,0% 8px)' }}>
                   {f.fotoURL ? <img src={f.fotoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
                     : <div style={{ textAlign: 'center', padding: 8 }}><div style={{ fontSize: 20, marginBottom: 4, opacity: 0.2 }}>◎</div><div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 7, color: '#2a3050', letterSpacing: 1 }}>SEM FOTO</div></div>}
