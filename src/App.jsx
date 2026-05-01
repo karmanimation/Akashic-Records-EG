@@ -1,12 +1,12 @@
 // src/App.jsx
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useMesas } from './hooks/useMesas'
 import { useFicha } from './hooks/useFicha'
 import Login from './components/Login'
 import Lobby from './components/Lobby'
-import Ficha from './components/Ficha'
-import PainelMestre from './components/PainelMestre'
+const Ficha = lazy(() => import('./components/Ficha'))
+const PainelMestre = lazy(() => import('./components/PainelMestre'))
 
 export default function App() {
   const { user, loading, error, login, register, logout } = useAuth()
@@ -35,21 +35,33 @@ export default function App() {
     )
   }
 
-  if (ehMestre) {
-    return <PainelMestre mesa={mesaSelecionada} onVoltar={() => setMesaSelecionada(null)} excluirMesa={async () => { await excluirMesa(mesaSelecionada.id); setMesaSelecionada(null) }} />
-  }
-
+if (ehMestre) {
   return (
-    <Ficha
-      ficha={ficha}
-      setFicha={setFicha}
-      salvar={salvar}
-      salvando={salvando}
-      ultimoSalvo={ultimoSalvo}
-      solicitarExclusao={solicitarExclusao}
-      cancelarExclusao={cancelarExclusao}
-      onVoltar={() => setMesaSelecionada(null)}
-    />
+    <Suspense fallback={<Splash texto="CARREGANDO PAINEL..." />}>
+      <PainelMestre
+        mesa={mesaSelecionada}
+        onVoltar={() => setMesaSelecionada(null)}
+        excluirMesa={async () => {
+          await excluirMesa(mesaSelecionada.id)
+          setMesaSelecionada(null)
+        }}
+      />
+    </Suspense>
+  )
+}
+   return (
+    <Suspense fallback={<Splash texto="CARREGANDO FICHA..." />}>
+      <Ficha
+        ficha={ficha}
+        setFicha={setFicha}
+        salvar={salvar}
+        salvando={salvando}
+        ultimoSalvo={ultimoSalvo}
+        solicitarExclusao={solicitarExclusao}
+        cancelarExclusao={cancelarExclusao}
+        onVoltar={() => setMesaSelecionada(null)}
+      />
+    </Suspense>
   )
 }
 

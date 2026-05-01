@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import {
   collection, doc, setDoc, getDoc, onSnapshot, deleteDoc,
-  query, where, arrayUnion, serverTimestamp
+  query, where, arrayUnion, serverTimestamp, getDocs, writeBatch
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
 
@@ -79,7 +79,18 @@ export function useMesas(user) {
 
   const excluirMesa = async (mesaId) => {
     try {
-      await deleteDoc(doc(db, 'mesas', mesaId))
+      const mesaRef = doc(db, 'mesas', mesaId)
+      const fichasSnap = await getDocs(collection(db, 'mesas', mesaId, 'fichas'))
+      const npcsSnap = await getDocs(collection(db, 'mesas', mesaId, 'npcs'))
+      const docsParaExcluir = [...fichasSnap.docs, ...npcsSnap.docs]
+
+      for (let i = 0; i < docsParaExcluir.length; i += 499) {
+        const batch = writeBatch(db)
+        docsParaExcluir.slice(i, i + 499).forEach(d => batch.delete(d.ref))
+        await batch.commit()
+      }
+
+      await deleteDoc(mesaRef)
     } catch (e) {
       alert('Erro ao excluir mesa: ' + e.message)
     }
