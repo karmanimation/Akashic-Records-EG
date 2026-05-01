@@ -534,76 +534,77 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
         {/* ─── IDENTIDADE ─── */}
         {aba === 'identidade' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} className="anim">
-            <div style={{ display: 'grid', gridTemplateColumns: '155px 1fr', gap: 14 }}>
-              <div>
-                <div style={{ width: '100%', aspectRatio: '3/4', background: '#09090f', border: '1px solid #1a1d35', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', clipPath: 'polygon(10px 0%,100% 0%,100% calc(100% - 10px),calc(100% - 10px) 100%,0% 100%,0% 10px)' }}>
+            {/* Foto + dados básicos lado a lado (funciona no mobile) */}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <div style={{ width: 100, flexShrink: 0 }}>
+                <div style={{ width: '100%', aspectRatio: '3/4', background: '#09090f', border: '1px solid #1a1d35', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', clipPath: 'polygon(8px 0%,100% 0%,100% calc(100% - 8px),calc(100% - 8px) 100%,0% 100%,0% 8px)' }}>
                   {f.fotoURL ? <img src={f.fotoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
-                    : <div style={{ textAlign: 'center', padding: 12 }}><div style={{ fontSize: 24, marginBottom: 4, opacity: 0.2 }}>◎</div><div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#2a3050', letterSpacing: 1 }}>SEM FOTO</div></div>}
+                    : <div style={{ textAlign: 'center', padding: 8 }}><div style={{ fontSize: 20, marginBottom: 4, opacity: 0.2 }}>◎</div><div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 7, color: '#2a3050', letterSpacing: 1 }}>SEM FOTO</div></div>}
                 </div>
-                <div style={{ marginTop: 8 }}>
+                <div style={{ marginTop: 6 }}>
                   <input type="file" accept="image/*" onChange={handleFoto} style={{ display: 'none' }} id="foto-input" />
-                  <button onClick={() => document.getElementById('foto-input').click()} style={{ width: '100%', background: 'transparent', border: '1px solid #1a1d35', color: '#3a4560', fontFamily: 'Share Tech Mono,monospace', fontSize: 8, letterSpacing: 1, padding: '6px', borderRadius: 2, cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}
-                    onMouseEnter={e => { e.target.style.borderColor = '#c8a96e55'; e.target.style.color = '#c8a96e' }}
-                    onMouseLeave={e => { e.target.style.borderColor = '#1a1d35'; e.target.style.color = '#3a4560' }}>
-                    {uploadando ? 'ENVIANDO...' : f.fotoURL ? 'ALTERAR FOTO' : '+ UPLOAD DE FOTO'}
+                  <button onClick={() => document.getElementById('foto-input').click()} style={{ width: '100%', background: 'transparent', border: '1px solid #1a1d35', color: '#3a4560', fontFamily: 'Share Tech Mono,monospace', fontSize: 7, letterSpacing: 1, padding: '5px 4px', borderRadius: 2, cursor: 'pointer', textAlign: 'center' }}>
+                    {uploadando ? '...' : f.fotoURL ? 'ALTERAR' : '+ FOTO'}
                   </button>
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <Painel>
                   <Titulo>Dados Gerais</Titulo>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <Campo label="Nome"><input value={f.nome} onChange={e => set('nome', e.target.value)} placeholder="Nome do personagem..." style={{ fontFamily: 'Cinzel,serif', fontSize: 15 }} /></Campo>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <Campo label="Nome"><input value={f.nome} onChange={e => set('nome', e.target.value)} placeholder="Nome do personagem..." style={{ fontFamily: 'Cinzel,serif', fontSize: 13 }} /></Campo>
                     <Grid2>
                       <Campo label="Raça"><input value={f.raca} onChange={e => set('raca', e.target.value)} placeholder="—" /></Campo>
                       <Campo label="Modificação"><input value={f.modificacao} onChange={e => set('modificacao', e.target.value)} placeholder="—" /></Campo>
                       <Campo label="Nível"><input type="number" min={1} max={300} value={f.nivel} onChange={e => set('nivel', Number(e.target.value))} /></Campo>
-                      <Campo label={<>Estágio</>}>
-                        <div style={{ background: 'rgba(5,5,12,0.9)', border: `1px solid ${corEstagio}44`, padding: '8px 12px', borderRadius: 2, fontFamily: 'Cinzel,serif', fontSize: 18, color: corEstagio, textAlign: 'center' }}>{estagio}</div>
+                      <Campo label="Estágio">
+                        <div style={{ background: 'rgba(5,5,12,0.9)', border: `1px solid ${corEstagio}44`, padding: '8px 6px', borderRadius: 2, fontFamily: 'Cinzel,serif', fontSize: 16, color: corEstagio, textAlign: 'center' }}>{estagio}</div>
                       </Campo>
                     </Grid2>
                   </div>
                 </Painel>
-                <Painel>
-                  <Titulo>Classe & Origem</Titulo>
-                  <Grid2>
-                    <Campo label={<>Classe</>}>
-                      <select value={f.classe} onChange={e => selecionarClasse(e.target.value)} disabled={bloq('classe')} style={inputStyle('classe')}>
-                        {Object.keys(CLASSES).map(c => <option key={c}>{c}</option>)}
-                      </select>
-                    </Campo>
-                    <Campo label={<>Trilha</>}>
-                      <select value={f.trilha} onChange={e => selecionarTrilha(e.target.value)} disabled={bloq('trilha')} style={inputStyle('trilha')}>
-                        <option value="">— Sem trilha —</option>
-                        {CLASSES[f.classe]?.trilhas.map(t => <option key={t}>{t}</option>)}
-                      </select>
-                    </Campo>
-                    <Campo label={<>Gênese</>}>
-                      <select value={f.genese} onChange={e => !bloq('genese') && selecionarGenese(e.target.value)} disabled={bloq('genese')} style={inputStyle('genese')}>
-                        {GENESES.map(g => <option key={g}>{g}</option>)}
-                      </select>
-                      {f.genese && GENESES_DATA[f.genese] && (
-                        <div style={{ marginTop: 6, padding: '6px 10px', background: 'rgba(200,169,110,0.05)', border: '1px solid rgba(200,169,110,0.15)', borderRadius: 2 }}>
-                          {GENESES_DATA[f.genese].bonusPericias.length > 0 && (
-                            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#c8a96e', letterSpacing: 1 }}>
-                              BÔNUS +2: {GENESES_DATA[f.genese].bonusPericias.join(' · ')}
-                            </div>
-                          )}
-                          {f.genese === 'Psicólogo' && (
-                            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#c8a96e', letterSpacing: 1 }}>
-                              BÔNUS +2: Duas perícias à escolha
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </Campo>
-                    <Campo label="Personalidade">
-                      <input value={f.personalidade || ''} onChange={e => set('personalidade', e.target.value)} placeholder="Descreva brevemente..." />
-                    </Campo>
-                  </Grid2>
-                </Painel>
               </div>
             </div>
+
+            {/* Classe & Origem — largura total */}
+            <Painel>
+              <Titulo>Classe & Origem</Titulo>
+              <Grid2>
+                <Campo label={<>Classe</>}>
+                  <select value={f.classe} onChange={e => selecionarClasse(e.target.value)} disabled={bloq('classe')} style={inputStyle('classe')}>
+                    {Object.keys(CLASSES).map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </Campo>
+                <Campo label={<>Trilha</>}>
+                  <select value={f.trilha} onChange={e => selecionarTrilha(e.target.value)} disabled={bloq('trilha')} style={inputStyle('trilha')}>
+                    <option value="">— Sem trilha —</option>
+                    {CLASSES[f.classe]?.trilhas.map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </Campo>
+                <Campo label={<>Gênese</>}>
+                  <select value={f.genese} onChange={e => !bloq('genese') && selecionarGenese(e.target.value)} disabled={bloq('genese')} style={inputStyle('genese')}>
+                    {GENESES.map(g => <option key={g}>{g}</option>)}
+                  </select>
+                  {f.genese && GENESES_DATA[f.genese] && (
+                    <div style={{ marginTop: 6, padding: '6px 10px', background: 'rgba(200,169,110,0.05)', border: '1px solid rgba(200,169,110,0.15)', borderRadius: 2 }}>
+                      {GENESES_DATA[f.genese].bonusPericias.length > 0 && (
+                        <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#c8a96e', letterSpacing: 1 }}>
+                          BÔNUS +2: {GENESES_DATA[f.genese].bonusPericias.join(' · ')}
+                        </div>
+                      )}
+                      {f.genese === 'Psicólogo' && (
+                        <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#c8a96e', letterSpacing: 1 }}>
+                          BÔNUS +2: Duas perícias à escolha
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Campo>
+                <Campo label="Personalidade">
+                  <input value={f.personalidade || ''} onChange={e => set('personalidade', e.target.value)} placeholder="Descreva brevemente..." />
+                </Campo>
+              </Grid2>
+            </Painel>
 
             {/* Elementos */}
             <Painel>
@@ -696,37 +697,31 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
               <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#5a6080', letterSpacing: 1, marginBottom: 12, lineHeight: 1.6 }}>
                 Estágio 1: 0–5 · Estágio 2: todos em 5 para avançar para 6 · Estágio 3: todos em 10 para avançar para 11
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {Object.entries(f.focos).map(([attr, val]) => {
                   const bonus = manAtivo ? (man.focos?.[attr] || 0) : 0
                   const valEfetivo = val + bonus
                   const podeUp = podeAumentar(f.focos, attr)
+                  const corAttr = val > 10 ? '#9a3030' : val > 5 ? '#4a9aba' : '#c8a96e'
                   return (
-                    <div key={attr} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <div style={{ width: 92, fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, color: bonus > 0 ? '#b060e0' : '#8a9ab0' }}>{attr.toUpperCase()}</div>
-                      <div style={{ display: 'flex', gap: 5 }}>
-                        {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(n => {
-                          const ativoBase = val >= n
-                          const ativoBonus = bonus > 0 && n > val && n <= valEfetivo
-                          const cor = ativoBonus ? '#b060e0' : n <= 5 ? '#c8a96e' : n <= 10 ? '#4a9aba' : '#9a3030'
-                          const sz = n > 10 ? 20 : n > 5 ? 24 : 28
-                          return (
-                            <button key={n} onClick={() => setFoco(attr, val === n ? n - 1 : n)} disabled={bloq('focos')} style={{
-                              width: sz, height: sz, borderRadius: '50%',
-                              border: `1px solid ${(ativoBase || ativoBonus) ? cor : '#1a2030'}`,
-                              background: ativoBonus ? 'rgba(160,80,220,0.15)' : ativoBase ? `${cor}20` : 'transparent',
-                              color: (ativoBase || ativoBonus) ? cor : '#1a2030',
-                              fontSize: n > 5 ? 9 : 13,
-                              boxShadow: ativoBonus ? `0 0 10px rgba(160,80,220,0.5)` : ativoBase ? `0 0 8px ${cor}33` : 'none',
-                              cursor: bloq('focos') ? 'not-allowed' : 'pointer', transition: 'all 0.15s',
-                              opacity: !ativoBase && !ativoBonus && !podeUp && n === val + 1 ? 0.25 : 1
-                            }}>{(ativoBase || ativoBonus) ? '◆' : '◇'}</button>
-                          )
-                        })}
+                    <div key={attr} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
+                      {/* Nome */}
+                      <div style={{ width: 76, fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: 1, color: bonus > 0 ? '#b060e0' : '#8a9ab0', flexShrink: 0 }}>{attr.toUpperCase()}</div>
+                      {/* Barra de progresso compacta */}
+                      <div style={{ flex: 1, height: 6, background: '#0d0e18', border: '1px solid #1a2030', borderRadius: 3, overflow: 'visible', position: 'relative', minWidth: 0 }}>
+                        <div style={{ height: '100%', width: `${(val / 15) * 100}%`, background: `linear-gradient(to right, ${corAttr}aa, ${corAttr})`, borderRadius: 3, transition: 'width 0.2s' }} />
+                        {bonus > 0 && (
+                          <div style={{ position: 'absolute', top: 0, left: `${(val / 15) * 100}%`, height: '100%', width: `${(bonus / 15) * 100}%`, background: 'rgba(176,96,224,0.5)', borderRadius: '0 3px 3px 0' }} />
+                        )}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                        <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, fontWeight: 700, color: bonus > 0 ? '#b060e0' : val > 0 ? '#c8a96e' : '#2a3050', minWidth: 26, textAlign: 'center' }}>{valEfetivo}</div>
-                        {bonus > 0 && <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#b060e0', opacity: 0.8 }}>(+{bonus})</div>}
+                      {/* Controles */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <button onClick={() => setFoco(attr, val - 1)} disabled={bloq('focos') || val <= 0} style={{ width: 28, height: 28, borderRadius: 2, border: '1px solid #1a2030', background: 'transparent', color: '#4a5070', cursor: (bloq('focos') || val <= 0) ? 'not-allowed' : 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>−</button>
+                        <div style={{ minWidth: 36, textAlign: 'center' }}>
+                          <span style={{ fontFamily: 'Cinzel,serif', fontSize: 18, fontWeight: 700, color: bonus > 0 ? '#b060e0' : val > 0 ? corAttr : '#2a3050' }}>{valEfetivo}</span>
+                          {bonus > 0 && <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#b060e0', display: 'block', lineHeight: 1 }}>+{bonus}</span>}
+                        </div>
+                        <button onClick={() => setFoco(attr, val + 1)} disabled={bloq('focos') || !podeUp} style={{ width: 28, height: 28, borderRadius: 2, border: '1px solid #1a2030', background: 'transparent', color: (bloq('focos') || !podeUp) ? '#2a2a2a' : '#4a5070', cursor: (bloq('focos') || !podeUp) ? 'not-allowed' : 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>+</button>
                       </div>
                     </div>
                   )
