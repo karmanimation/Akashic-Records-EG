@@ -805,7 +805,7 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} className="anim">
             {/* Foto + dados básicos */}
             <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-              <div style={{ width: 130, flexShrink: 0 }}>
+              <div style={{ width: 150, flexShrink: 0 }}>
                 <div style={{ width: '100%', aspectRatio: '3/4', background: '#09090f', border: `1px solid ${corCat}44`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', clipPath: 'polygon(10px 0%,100% 0%,100% calc(100% - 10px),calc(100% - 10px) 100%,0% 100%,0% 10px)' }}>
                   {dados.fotoURL ? <img src={dados.fotoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ textAlign: 'center', padding: 12 }}><div style={{ fontSize: 28, opacity: 0.2, color: corCat }}>◎</div><div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#2a3050' }}>SEM FOTO</div></div>}
                 </div>
