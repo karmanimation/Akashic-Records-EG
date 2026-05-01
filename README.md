@@ -72,6 +72,27 @@ service cloud.firestore {
         );
         allow write: if request.auth != null && request.auth.uid == userId;
       }
+
+      // NPCs: apenas o mestre da mesa lê e gerencia
+      match /npcs/{npcId} {
+        allow read: if request.auth != null && (
+          get(/databases/$(database)/documents/mesas/$(mesaId)).data.mestreId == request.auth.uid
+        );
+        allow write: if request.auth != null &&
+          get(/databases/$(database)/documents/mesas/$(mesaId)).data.mestreId == request.auth.uid;
+      }
+
+      // Resumos públicos da mesa: jogadores leem só o resumo; ficha/NPC completos continuam privados
+      match /resumos/{resumoId} {
+        allow read: if request.auth != null && (
+          request.auth.uid in get(/databases/$(database)/documents/mesas/$(mesaId)).data.jogadoresIds ||
+          get(/databases/$(database)/documents/mesas/$(mesaId)).data.mestreId == request.auth.uid
+        );
+        allow write: if request.auth != null && (
+          request.auth.uid == resumoId ||
+          get(/databases/$(database)/documents/mesas/$(mesaId)).data.mestreId == request.auth.uid
+        );
+      }
     }
   }
 }

@@ -44,7 +44,7 @@ function isBloqueado(ficha, campo) {
   return true
 }
 
-export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, onVoltar, solicitarExclusao, cancelarExclusao }) {
+export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, onVoltar, onAbrirVisaoMesa, solicitarExclusao, cancelarExclusao }) {
   const [aba, setAba] = useState('identidade')
   const [uploadando, setUploadando] = useState(false)
   const [catalogoAberto, setCatalogoAberto] = useState(null)
@@ -498,7 +498,13 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
             <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#7a849a', letterSpacing: 2 }}>NÍVEL</div>
             <div style={{ fontFamily: 'Cinzel,serif', fontSize: 30, fontWeight: 900, color: '#4a9aba', lineHeight: 1 }}>{f.nivel}</div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {onAbrirVisaoMesa && (
+              <button onClick={onAbrirVisaoMesa} style={{ background: 'transparent', border: '1px solid #4a9aba55', color: '#4a9aba', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '6px 12px', cursor: 'pointer', borderRadius: 2 }}
+                title="Visualizar fichas resumidas da mesa">
+                ◉ FICHAS
+              </button>
+            )}
             {!f.finalizada && (
               <button onClick={() => setConfirmandoFinalizar(true)} style={{ background: 'rgba(154,48,48,0.1)', border: '1px solid #9a303055', color: '#c05050', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '6px 12px', cursor: 'pointer', borderRadius: 2 }}>
                 ◉ FINALIZAR

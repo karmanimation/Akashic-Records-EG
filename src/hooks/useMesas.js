@@ -46,11 +46,12 @@ export function useMesas(user) {
   }, [user])
 
   // Criar mesa (usuário vira Mestre)
-  const criarMesa = async (nome, user) => {
+  const criarMesa = async (nome, user, capaURL = '') => {
     const codigo = gerarCodigo()
     const id = `mesa_${codigo}`
     await setDoc(doc(db, 'mesas', id), {
       nome,
+      capaURL,
       codigo,
       mestreId: user.uid,
       mestreNome: user.displayName || user.email,
@@ -59,6 +60,11 @@ export function useMesas(user) {
       criadaEm: serverTimestamp()
     })
     return codigo
+  }
+
+  const salvarCapaMesa = async (mesaId, capaURL) => {
+    if (!mesaId) return
+    await setDoc(doc(db, 'mesas', mesaId), { capaURL }, { merge: true })
   }
 
   // Entrar em mesa pelo código
@@ -82,7 +88,8 @@ export function useMesas(user) {
       const mesaRef = doc(db, 'mesas', mesaId)
       const fichasSnap = await getDocs(collection(db, 'mesas', mesaId, 'fichas'))
       const npcsSnap = await getDocs(collection(db, 'mesas', mesaId, 'npcs'))
-      const docsParaExcluir = [...fichasSnap.docs, ...npcsSnap.docs]
+      const resumosSnap = await getDocs(collection(db, 'mesas', mesaId, 'resumos'))
+      const docsParaExcluir = [...fichasSnap.docs, ...npcsSnap.docs, ...resumosSnap.docs]
 
       for (let i = 0; i < docsParaExcluir.length; i += 499) {
         const batch = writeBatch(db)
@@ -96,5 +103,5 @@ export function useMesas(user) {
     }
   }
 
-  return { mesas, loading, criarMesa, entrarMesa, excluirMesa }
+  return { mesas, loading, criarMesa, entrarMesa, excluirMesa, salvarCapaMesa }
 }

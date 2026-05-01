@@ -7,11 +7,13 @@ import Login from './components/Login'
 import Lobby from './components/Lobby'
 const Ficha = lazy(() => import('./components/Ficha'))
 const PainelMestre = lazy(() => import('./components/PainelMestre'))
+const FichasPublicas = lazy(() => import('./components/FichasPublicas'))
 
 export default function App() {
   const { user, loading, error, login, register, logout } = useAuth()
-  const { mesas, criarMesa, entrarMesa, excluirMesa } = useMesas(user)
+  const { mesas, criarMesa, entrarMesa, excluirMesa, salvarCapaMesa } = useMesas(user)
   const [mesaSelecionada, setMesaSelecionada] = useState(null)
+  const [visualizandoFichas, setVisualizandoFichas] = useState(false)
 
   const ehMestre = mesaSelecionada && mesaSelecionada.mestreId === user?.uid
 
@@ -29,7 +31,8 @@ export default function App() {
         mesas={mesas}
         criarMesa={criarMesa}
         entrarMesa={entrarMesa}
-        onSelecionarMesa={setMesaSelecionada}
+        salvarCapaMesa={salvarCapaMesa}
+        onSelecionarMesa={(mesa) => { setMesaSelecionada(mesa); setVisualizandoFichas(false) }}
         logout={logout}
       />
     )
@@ -49,6 +52,18 @@ if (ehMestre) {
     </Suspense>
   )
 }
+
+  if (visualizandoFichas) {
+    return (
+      <Suspense fallback={<Splash texto="CARREGANDO FICHAS..." />}>
+        <FichasPublicas
+          mesa={mesaSelecionada}
+          onVoltar={() => setVisualizandoFichas(false)}
+        />
+      </Suspense>
+    )
+  }
+
    return (
     <Suspense fallback={<Splash texto="CARREGANDO FICHA..." />}>
       <Ficha
@@ -59,7 +74,8 @@ if (ehMestre) {
         ultimoSalvo={ultimoSalvo}
         solicitarExclusao={solicitarExclusao}
         cancelarExclusao={cancelarExclusao}
-        onVoltar={() => setMesaSelecionada(null)}
+        onAbrirVisaoMesa={() => setVisualizandoFichas(true)}
+        onVoltar={() => { setVisualizandoFichas(false); setMesaSelecionada(null) }}
       />
     </Suspense>
   )

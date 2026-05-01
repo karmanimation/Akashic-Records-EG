@@ -155,6 +155,7 @@ export function useFicha(userId, mesaId) {
         },
         historico: historicoAtualizado,
       })
+      await setDoc(doc(db, 'mesas', mesaId, 'resumos', userId), criarResumoFicha({ ...dados, uid: userId }, 'jogador'))
       setUltimoSalvo(new Date())
     } finally { setSalvando(false) }
   }, [userId, mesaId])
@@ -187,7 +188,11 @@ export function useFichasMesa(mesaId) {
   useEffect(() => {
     if (!mesaId) return
     return onSnapshot(collection(db, 'mesas', mesaId, 'fichas'), snap => {
-      setFichas(snap.docs.map(d => ({ uid: d.id, ...d.data() })))
+      const dados = snap.docs.map(d => ({ uid: d.id, ...d.data() }))
+      setFichas(dados)
+      dados.forEach(f => {
+        setDoc(doc(db, 'mesas', mesaId, 'resumos', f.uid), criarResumoFicha(f, 'jogador')).catch(() => {})
+      })
       setLoading(false)
     })
   }, [mesaId])
@@ -245,6 +250,21 @@ export function useFichasMesa(mesaId) {
   return { fichas, loading, liberarFicha, travarFicha, excluirFicha, rejeitarExclusao, salvarManifestacao }
 }
 
+export function useResumosMesa(mesaId) {
+  const [resumos, setResumos] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!mesaId) return
+    return onSnapshot(collection(db, 'mesas', mesaId, 'resumos'), snap => {
+      setResumos(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setLoading(false)
+    })
+  }, [mesaId])
+
+  return { resumos, loading }
+}
+
 export function useNPCs(mesaId) {
   const [npcs, setNPCs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -252,7 +272,11 @@ export function useNPCs(mesaId) {
   useEffect(() => {
     if (!mesaId) return
     return onSnapshot(collection(db, 'mesas', mesaId, 'npcs'), snap => {
-      setNPCs(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      const dados = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      setNPCs(dados)
+      dados.forEach(npc => {
+        setDoc(doc(db, 'mesas', mesaId, 'resumos', npc.id), criarResumoFicha(npc, 'npc')).catch(() => {})
+      })
       setLoading(false)
     })
   }, [mesaId])
@@ -261,13 +285,42 @@ export function useNPCs(mesaId) {
     if (!mesaId) return
     const id = npc.id || `npc_${Date.now()}`
     await setDoc(doc(db, 'mesas', mesaId, 'npcs', id), { ...npc, id })
+    await setDoc(doc(db, 'mesas', mesaId, 'resumos', id), criarResumoFicha({ ...npc, id }, 'npc'))
     return id
   }, [mesaId])
 
   const excluirNPC = useCallback(async (id) => {
     if (!mesaId || !id) return
     await deleteDoc(doc(db, 'mesas', mesaId, 'npcs', id))
+    await deleteDoc(doc(db, 'mesas', mesaId, 'resumos', id))
   }, [mesaId])
 
   return { npcs, loading, salvarNPC, excluirNPC }
+}
+
+function criarResumoFicha(ficha, tipo) {
+  return {
+    tipo,
+    origemId: tipo === 'npc' ? ficha.id : ficha.uid,
+    nome: ficha.nome || '',
+    fotoURL: ficha.fotoURL || '',
+    classe: ficha.classe || '',
+    trilha: ficha.trilha || '',
+    genese: ficha.genese || '',
+    elementos: ficha.elementos || [],
+    nivel: ficha.nivel || 1,
+    categoriaNPC: ficha.categoriaNPC || '',
+    focos: ficha.focos || {},
+    pericias: ficha.pericias || {},
+    reservas: ficha.reservas || {},
+    combate: ficha.combate || {},
+    armas: ficha.armas || [],
+    inventario: ficha.inventario || [],
+    habilidades: ficha.habilidades || [],
+    magias: ficha.magias || [],
+    passivas: ficha.passivas || [],
+    poderes: ficha.poderes || [],
+    manifestacao: ficha.manifestacao || { ativo: false, tipo: 'vazio', nome: '', liberado: false, focos: {}, pericias: {} },
+    atualizadoEm: new Date().toISOString(),
+  }
 }

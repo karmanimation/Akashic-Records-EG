@@ -85,11 +85,14 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2, marginBottom: 4 }}>VISÃO DO MESTRE</div>
-          <div style={{ fontFamily: 'Cinzel,serif', fontSize: 19, fontWeight: 700, color: '#c8a96e', letterSpacing: 2 }}>{mesa.nome}</div>
-          <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', marginTop: 3 }}>CÓDIGO: {mesa.codigo}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+          {mesa.capaURL && <img src={mesa.capaURL} alt="" style={{ width: 72, height: 72, objectFit: 'cover', border: '1px solid #1a1d35', borderRadius: 2, flexShrink: 0 }} />}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2, marginBottom: 4 }}>VISÃO DO MESTRE</div>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 19, fontWeight: 700, color: '#c8a96e', letterSpacing: 2 }}>{mesa.nome}</div>
+            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', marginTop: 3 }}>CÓDIGO: {mesa.codigo}</div>
+          </div>
         </div>
         <button onClick={onVoltar} style={{ background: 'transparent', border: '1px solid #2a3050', color: '#4a6080', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '7px 14px', borderRadius: 2, cursor: 'pointer' }}>← VOLTAR</button>
         <button onClick={() => setConfirmandoMesa1(true)} style={{ background: 'transparent', border: '1px solid #5a202055', color: '#6a3030', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '7px 14px', borderRadius: 2, cursor: 'pointer' }}>🗑 EXCLUIR MESA</button>
