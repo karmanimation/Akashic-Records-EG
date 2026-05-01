@@ -211,6 +211,16 @@ function VisualizarFichaPublica({ ficha, tipo, onVoltar, abaVer, setAbaVer }) {
                     </div>
                   ))}
                 </div>
+                {(arma.acessorios || []).length > 0 && (
+                  <div>
+                    <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#3a4560', letterSpacing: 1, marginBottom: 4 }}>ACESSORIOS</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {(arma.acessorios || []).map(ac => (
+                        <span key={ac} style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#4a9aba', background: 'rgba(74,154,186,0.08)', border: '1px solid rgba(74,154,186,0.25)', padding: '2px 8px', borderRadius: 2 }}>{ac}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </Painel>
