@@ -1,7 +1,7 @@
 ﻿// src/components/PainelMestre.jsx
 import { useState } from 'react'
 import { useFichasMesa, useNPCs } from '../hooks/useFicha'
-import { CLASSES, PERICIAS, GENESES, ELEMENTOS, TIPOS_ARMA, CATALOGO_ARMAS, CATALOGO_MAGIAS, CATALOGO_PODERES, ACESSORIOS_ARMA, TIPOS_MUNICAO, CARGA_POR_FORCA, fichaInicial } from '../data/sistema'
+import { CLASSES, PERICIAS, GENESES, GENESES_DATA, ELEMENTOS, TIPOS_ARMA, CATALOGO_ARMAS, CATALOGO_MAGIAS, CATALOGO_PODERES, ACESSORIOS_ARMA, TIPOS_MUNICAO, CARGA_POR_FORCA, fichaInicial } from '../data/sistema'
 import { Painel, Titulo, Tag, Campo, Grid2, BtnLink, BtnPerigo } from './UI'
 
 const CATEGORIAS_NPC = ['Boss', 'Principal', 'Inimigo', 'Aliado', 'Coadjuvante', 'Padrão']
@@ -847,6 +847,20 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
                           <option value="">— Sem gênese —</option>
                           {GENESES.map(g => <option key={g}>{g}</option>)}
                         </select>
+                        {dados.genese && GENESES_DATA[dados.genese] && (
+                          <div style={{ marginTop: 6, padding: '6px 10px', background: 'rgba(200,169,110,0.05)', border: '1px solid rgba(200,169,110,0.15)', borderRadius: 2 }}>
+                            {GENESES_DATA[dados.genese].bonusPericias.length > 0 && (
+                              <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#c8a96e', letterSpacing: 1 }}>
+                                BÔNUS +2: {GENESES_DATA[dados.genese].bonusPericias.join(' · ')}
+                              </div>
+                            )}
+                            {dados.genese === 'Psicólogo' && (
+                              <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#c8a96e', letterSpacing: 1 }}>
+                                BÔNUS +2: Duas perícias à escolha
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </Campo>
                     </div>
                   </div>
@@ -970,14 +984,22 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {lista.map(per => {
                     const val = dados.pericias[per] || 0
+                    const bonusGenese = (GENESES_DATA[dados.genese]?.bonusPericias || [])
+                      .some(p => p.toLowerCase() === per.toLowerCase()) ? 2 : 0
+                    const valEfetivo = val + bonusGenese
                     return (
-                      <div key={per} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 2, transition: 'background 0.15s' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(200,169,110,0.03)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <span style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: val > 0 ? '#c8cdd8' : '#4a5070' }}>{per}</span>
+                      <div key={per} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 2, transition: 'background 0.15s', background: bonusGenese > 0 ? 'rgba(200,169,110,0.03)' : 'transparent' }}
+                        onMouseEnter={e => e.currentTarget.style.background = bonusGenese > 0 ? 'rgba(200,169,110,0.06)' : 'rgba(200,169,110,0.03)'}
+                        onMouseLeave={e => e.currentTarget.style.background = bonusGenese > 0 ? 'rgba(200,169,110,0.03)' : 'transparent'}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: (val > 0 || bonusGenese > 0) ? '#c8cdd8' : '#4a5070' }}>{per}</span>
+                          {bonusGenese > 0 && (
+                            <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#c8a96e', background: 'rgba(200,169,110,0.12)', border: '1px solid rgba(200,169,110,0.3)', padding: '1px 5px', borderRadius: 2, letterSpacing: 1 }}>GÊNESE +{bonusGenese}</span>
+                          )}
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <button onClick={() => setPericia(per, val - 1)} style={{ background: 'transparent', border: '1px solid #1a2030', color: '#4a5070', width: 20, height: 20, borderRadius: 2, cursor: 'pointer', fontSize: 12 }}>−</button>
-                          <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 13, color: val > 0 ? '#c8a96e' : '#2a3050', minWidth: 28, textAlign: 'center', fontWeight: val > 0 ? 'bold' : 'normal' }}>{val > 0 ? `+${val}` : '—'}</div>
+                          <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 13, color: (val > 0 || bonusGenese > 0) ? '#c8a96e' : '#2a3050', minWidth: 28, textAlign: 'center', fontWeight: (val > 0 || bonusGenese > 0) ? 'bold' : 'normal' }}>{valEfetivo > 0 ? `+${valEfetivo}` : '—'}</div>
                           <button onClick={() => setPericia(per, val + 1)} style={{ background: 'transparent', border: '1px solid #1a2030', color: '#4a5070', width: 20, height: 20, borderRadius: 2, cursor: 'pointer', fontSize: 12 }}>+</button>
                         </div>
                       </div>
