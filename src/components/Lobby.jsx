@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Sigil, Painel, Titulo, BtnLink } from './UI'
 
-export default function Lobby({ user, mesas, criarMesa, entrarMesa, salvarCapaMesa, onSelecionarMesa, logout }) {
+export default function Lobby({ user, mesas, criarMesa, entrarMesa, salvarCapaMesa, onSelecionarMesa, onVisualizarFichas, logout }) {
   const [view, setView] = useState('lista')
   const [nomeMesa, setNomeMesa] = useState('')
   const [capaMesa, setCapaMesa] = useState('')
@@ -144,7 +144,7 @@ export default function Lobby({ user, mesas, criarMesa, entrarMesa, salvarCapaMe
           <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 3, color: '#4a9aba', marginBottom: 12 }}>SUAS MESAS - JOGADOR</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {mesasJogador.map(m => (
-              <MesaCard key={m.id} mesa={m} papel="JOGADOR" onEntrar={() => onSelecionarMesa(m)} />
+              <MesaCard key={m.id} mesa={m} papel="JOGADOR" onEntrar={() => onSelecionarMesa(m)} onVisualizarFichas={() => onVisualizarFichas(m)} />
             ))}
           </div>
         </div>
@@ -160,7 +160,7 @@ export default function Lobby({ user, mesas, criarMesa, entrarMesa, salvarCapaMe
   )
 }
 
-function MesaCard({ mesa, papel, onEntrar, onAtualizarCapa }) {
+function MesaCard({ mesa, papel, onEntrar, onAtualizarCapa, onVisualizarFichas }) {
   const [h, setH] = useState(false)
   const cor = papel === 'MESTRE' ? '#c8a96e' : '#4a9aba'
   return (
@@ -189,6 +189,30 @@ function MesaCard({ mesa, papel, onEntrar, onAtualizarCapa }) {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {papel === 'JOGADOR' && onVisualizarFichas && (
+            <button
+              type="button"
+              title="Visualizar fichas da mesa"
+              onClick={e => {
+                e.stopPropagation()
+                onVisualizarFichas()
+              }}
+              style={{
+                width: 32,
+                height: 26,
+                background: h ? 'rgba(74,154,186,0.08)' : 'transparent',
+                border: '1px solid #4a9aba55',
+                color: '#4a9aba',
+                fontFamily: 'Share Tech Mono,monospace',
+                fontSize: 15,
+                lineHeight: 1,
+                borderRadius: 2,
+                cursor: 'pointer'
+              }}
+            >
+              ◉
+            </button>
+          )}
           {papel === 'MESTRE' && onAtualizarCapa && (
             <UploadCapa onImagem={(img) => onAtualizarCapa(mesa.id, img)} label="CAPA" compacto stopPropagation />
           )}

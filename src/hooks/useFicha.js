@@ -253,16 +253,27 @@ export function useFichasMesa(mesaId) {
 export function useResumosMesa(mesaId) {
   const [resumos, setResumos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (!mesaId) return
+    if (!mesaId) {
+      setResumos([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    setError(null)
     return onSnapshot(collection(db, 'mesas', mesaId, 'resumos'), snap => {
       setResumos(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setLoading(false)
+    }, e => {
+      setError(e)
+      setResumos([])
       setLoading(false)
     })
   }, [mesaId])
 
-  return { resumos, loading }
+  return { resumos, loading, error }
 }
 
 export function useNPCs(mesaId) {

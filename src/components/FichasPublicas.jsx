@@ -15,8 +15,8 @@ const ABAS_VER = [
   { id: 'manifestacao', label: 'MANIFESTACAO' },
 ]
 
-export default function FichasPublicas({ mesa, onVoltar }) {
-  const { resumos, loading } = useResumosMesa(mesa.id)
+export default function FichasPublicas({ mesa, onVoltar, voltarLabel = 'VOLTAR A FICHA' }) {
+  const { resumos, loading, error } = useResumosMesa(mesa.id)
   const [abaPrincipal, setAbaPrincipal] = useState('jogadores')
   const [selecionada, setSelecionada] = useState(null)
   const [abaVer, setAbaVer] = useState('geral')
@@ -24,6 +24,19 @@ export default function FichasPublicas({ mesa, onVoltar }) {
   const fichaSelecionada = resumos.find(f => f.id === selecionada?.id)
 
   if (loading) return <Splash texto="CARREGANDO FICHAS..." />
+  if (error) {
+    return (
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 16px' }}>
+        <button onClick={onVoltar} style={{ ...botaoSecundario, marginBottom: 18 }}>{voltarLabel}</button>
+        <Painel>
+          <Titulo cor="#c05050">Fichas indisponiveis</Titulo>
+          <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: '#8a9ab0', lineHeight: 1.6 }}>
+            Nao foi possivel carregar os resumos desta mesa. Verifique se as regras do Firestore permitem leitura da colecao <span style={{ fontFamily: 'Share Tech Mono,monospace', color: '#c8a96e' }}>resumos</span> para jogadores da mesa.
+          </div>
+        </Painel>
+      </div>
+    )
+  }
 
   if (selecionada && fichaSelecionada) {
     return (
@@ -51,7 +64,7 @@ export default function FichasPublicas({ mesa, onVoltar }) {
             <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', marginTop: 3 }}>FICHAS DE JOGADORES E NPCs</div>
           </div>
         </div>
-        <button onClick={onVoltar} style={botaoSecundario}>VOLTAR A FICHA</button>
+        <button onClick={onVoltar} style={botaoSecundario}>{voltarLabel}</button>
       </div>
 
       <div style={{ display: 'flex', borderBottom: '1px solid #1a1d35', marginBottom: 20 }}>

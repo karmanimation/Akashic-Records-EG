@@ -10,10 +10,11 @@ const PainelMestre = lazy(() => import('./components/PainelMestre'))
 const FichasPublicas = lazy(() => import('./components/FichasPublicas'))
 
 export default function App() {
-  const { user, loading, error, login, register, logout } = useAuth()
+  const { user, loading, error, login, register, resetPassword, logout } = useAuth()
   const { mesas, criarMesa, entrarMesa, excluirMesa, salvarCapaMesa } = useMesas(user)
   const [mesaSelecionada, setMesaSelecionada] = useState(null)
   const [visualizandoFichas, setVisualizandoFichas] = useState(false)
+  const [origemVisualizacao, setOrigemVisualizacao] = useState('ficha')
 
   const ehMestre = mesaSelecionada && mesaSelecionada.mestreId === user?.uid
 
@@ -22,7 +23,7 @@ export default function App() {
     useFicha(!ehMestre ? user?.uid : null, !ehMestre ? mesaSelecionada?.id : null)
 
   if (loading) return <Splash texto="CARREGANDO..." />
-  if (!user) return <Login login={login} register={register} error={error} />
+  if (!user) return <Login login={login} register={register} resetPassword={resetPassword} error={error} />
 
   if (!mesaSelecionada) {
     return (
@@ -32,7 +33,8 @@ export default function App() {
         criarMesa={criarMesa}
         entrarMesa={entrarMesa}
         salvarCapaMesa={salvarCapaMesa}
-        onSelecionarMesa={(mesa) => { setMesaSelecionada(mesa); setVisualizandoFichas(false) }}
+        onSelecionarMesa={(mesa) => { setMesaSelecionada(mesa); setVisualizandoFichas(false); setOrigemVisualizacao('ficha') }}
+        onVisualizarFichas={(mesa) => { setMesaSelecionada(mesa); setVisualizandoFichas(true); setOrigemVisualizacao('lobby') }}
         logout={logout}
       />
     )
@@ -58,7 +60,11 @@ if (ehMestre) {
       <Suspense fallback={<Splash texto="CARREGANDO FICHAS..." />}>
         <FichasPublicas
           mesa={mesaSelecionada}
-          onVoltar={() => setVisualizandoFichas(false)}
+          voltarLabel={origemVisualizacao === 'lobby' ? 'VOLTAR AS MESAS' : 'VOLTAR A FICHA'}
+          onVoltar={() => {
+            setVisualizandoFichas(false)
+            if (origemVisualizacao === 'lobby') setMesaSelecionada(null)
+          }}
         />
       </Suspense>
     )
@@ -74,7 +80,7 @@ if (ehMestre) {
         ultimoSalvo={ultimoSalvo}
         solicitarExclusao={solicitarExclusao}
         cancelarExclusao={cancelarExclusao}
-        onAbrirVisaoMesa={() => setVisualizandoFichas(true)}
+        onAbrirVisaoMesa={() => { setOrigemVisualizacao('ficha'); setVisualizandoFichas(true) }}
         onVoltar={() => { setVisualizandoFichas(false); setMesaSelecionada(null) }}
       />
     </Suspense>

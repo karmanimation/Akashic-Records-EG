@@ -2,16 +2,26 @@
 import { useState } from 'react'
 import { Sigil } from './UI'
 
-export default function Login({ login, register, error }) {
+export default function Login({ login, register, resetPassword, error }) {
   const [modo, setModo] = useState('login')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [nome, setNome] = useState('')
+  const [mensagem, setMensagem] = useState('')
 
   const submit = async e => {
     e.preventDefault()
+    setMensagem('')
     if (modo === 'login') await login(email, senha)
-    else await register(email, senha, nome)
+    else if (modo === 'reset') {
+      const ok = await resetPassword(email)
+      if (ok) setMensagem('Enviamos um portal de redefinicao para o seu e-mail.')
+    } else await register(email, senha, nome)
+  }
+
+  const alternarLoginRegistro = () => {
+    setModo(m => m === 'login' ? 'registro' : 'login')
+    setMensagem('')
   }
 
   const inp = { marginBottom: 16 }
@@ -26,7 +36,6 @@ export default function Login({ login, register, error }) {
         boxShadow: '0 0 80px rgba(200,169,110,0.05)',
         padding: '44px 36px', position: 'relative'
       }}>
-        {/* Cantos */}
         {[
           { top: 0, left: 0, borderWidth: '1px 0 0 1px' },
           { top: 0, right: 0, borderWidth: '1px 1px 0 0' },
@@ -39,15 +48,21 @@ export default function Login({ login, register, error }) {
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Sigil size={52} /></div>
           <div style={{ fontFamily: 'Cinzel,serif', fontSize: 20, fontWeight: 700, color: '#c8a96e', letterSpacing: 4 }}>AKASHIC RECORDS</div>
-          <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#3a4560', letterSpacing: 2, marginTop: 2 }}>ENTRE GALÁXIAS</div>
+          <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 10, color: '#3a4560', letterSpacing: 2, marginTop: 2 }}>ENTRE GALAXIAS</div>
           <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#2a3050', letterSpacing: 2, marginTop: 4 }}>
-            {modo === 'login' ? 'ACESSO AO SISTEMA' : 'REGISTRO DE AGENTE'}
+            {modo === 'login' ? 'ACESSO AO SISTEMA' : modo === 'reset' ? 'RECUPERACAO DE ACESSO' : 'REGISTRO DE AGENTE'}
           </div>
         </div>
 
         {error && (
           <div style={{ background: 'rgba(150,30,30,0.12)', border: '1px solid #5a2020', color: '#c06060', fontFamily: 'Share Tech Mono,monospace', fontSize: 11, padding: '9px 12px', borderRadius: 2, marginBottom: 16 }}>
             {error}
+          </div>
+        )}
+
+        {mensagem && (
+          <div style={{ background: 'rgba(74,154,186,0.1)', border: '1px solid #4a9aba55', color: '#4a9aba', fontFamily: 'Share Tech Mono,monospace', fontSize: 11, padding: '9px 12px', borderRadius: 2, marginBottom: 16 }}>
+            {mensagem}
           </div>
         )}
 
@@ -62,10 +77,12 @@ export default function Login({ login, register, error }) {
             <label style={lbl}>E-mail</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="seu@email.com" />
           </div>
-          <div style={{ marginBottom: 20 }}>
-            <label style={lbl}>Senha</label>
-            <input type="password" value={senha} onChange={e => setSenha(e.target.value)} required placeholder="••••••••" />
-          </div>
+          {modo !== 'reset' && (
+            <div style={{ marginBottom: 20 }}>
+              <label style={lbl}>Senha</label>
+              <input type="password" value={senha} onChange={e => setSenha(e.target.value)} required placeholder="********" />
+            </div>
+          )}
           <button type="submit" style={{
             width: '100%', padding: '11px',
             background: 'rgba(200,169,110,0.08)', border: '1px solid #c8a96e55',
@@ -74,15 +91,25 @@ export default function Login({ login, register, error }) {
           }}
             onMouseEnter={e => e.target.style.background = 'rgba(200,169,110,0.15)'}
             onMouseLeave={e => e.target.style.background = 'rgba(200,169,110,0.08)'}
-          >{modo === 'login' ? 'ACESSAR' : 'REGISTRAR'}</button>
+          >{modo === 'login' ? 'ACESSAR' : modo === 'reset' ? 'RECUPERAR SENHA' : 'REGISTRAR'}</button>
         </form>
 
-        <button onClick={() => setModo(m => m === 'login' ? 'registro' : 'login')} style={{
+        {modo === 'login' && (
+          <button onClick={() => { setModo('reset'); setMensagem('') }} style={{
+            display: 'block', margin: '14px auto 0', background: 'transparent', border: 'none',
+            color: '#4a6080', fontFamily: 'Share Tech Mono,monospace', fontSize: 9,
+            letterSpacing: 1, cursor: 'pointer', textDecoration: 'underline'
+          }}>
+            Esqueci minha senha
+          </button>
+        )}
+
+        <button onClick={alternarLoginRegistro} style={{
           display: 'block', margin: '16px auto 0', background: 'transparent', border: 'none',
           color: '#3a4560', fontFamily: 'Crimson Text,serif', fontSize: 14,
           cursor: 'pointer', textDecoration: 'underline'
         }}>
-          {modo === 'login' ? 'Criar nova conta' : 'Já tenho uma conta'}
+          {modo === 'login' ? 'Criar nova conta' : 'Ja tenho uma conta'}
         </button>
       </div>
     </div>

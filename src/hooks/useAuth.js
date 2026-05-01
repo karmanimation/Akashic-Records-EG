@@ -1,6 +1,6 @@
 // src/hooks/useAuth.js
 import { useState, useEffect } from 'react'
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, sendPasswordResetEmail } from 'firebase/auth'
 import { auth } from '../firebase/config'
 
 export function useAuth() {
@@ -27,12 +27,25 @@ export function useAuth() {
     catch (e) { setError(erro(e.code)) }
   }
 
+  const resetPassword = async (email) => {
+    setError(null)
+    try {
+      await sendPasswordResetEmail(auth, email)
+      return true
+    } catch (e) {
+      setError(erro(e.code))
+      return false
+    }
+  }
+
   const logout = () => signOut(auth)
 
-  return { user, loading, error, register, login, logout }
+  return { user, loading, error, register, login, resetPassword, logout }
 }
 
 function erro(code) {
+  if (code === 'auth/missing-email') return 'Informe o e-mail da conta.'
+  if (code === 'auth/too-many-requests') return 'Muitas tentativas. Aguarde um pouco e tente novamente.'
   return {
     'auth/email-already-in-use': 'E-mail já em uso.',
     'auth/invalid-email': 'E-mail inválido.',
