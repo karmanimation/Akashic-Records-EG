@@ -15,9 +15,8 @@ const ABAS_VER = [
   { id: 'manifestacao', label: 'MANIFESTACAO' },
 ]
 
-export default function FichasPublicas({ mesa, onVoltar, voltarLabel = 'VOLTAR A FICHA' }) {
-  const { resumos, loading, error } = useResumosMesa(mesa.id)
-  const [abaPrincipal, setAbaPrincipal] = useState('jogadores')
+export default function FichasPublicas({ mesa, userId, onVoltar, voltarLabel = 'VOLTAR A FICHA' }) {
+  const { resumos, loading, error } = useResumosMesa(mesa.id, userId)
   const [selecionada, setSelecionada] = useState(null)
   const [abaVer, setAbaVer] = useState('geral')
 
@@ -31,7 +30,7 @@ export default function FichasPublicas({ mesa, onVoltar, voltarLabel = 'VOLTAR A
         <Painel>
           <Titulo cor="#c05050">Fichas indisponiveis</Titulo>
           <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: '#8a9ab0', lineHeight: 1.6 }}>
-            Nao foi possivel carregar os resumos desta mesa. Verifique se as regras do Firestore permitem leitura da colecao <span style={{ fontFamily: 'Share Tech Mono,monospace', color: '#c8a96e' }}>resumos</span> para jogadores da mesa.
+            Nao foi possivel carregar o resumo da sua ficha. Verifique se as regras do Firestore permitem leitura do seu documento em <span style={{ fontFamily: 'Share Tech Mono,monospace', color: '#c8a96e' }}>resumos</span>.
           </div>
         </Painel>
       </div>
@@ -50,8 +49,7 @@ export default function FichasPublicas({ mesa, onVoltar, voltarLabel = 'VOLTAR A
     )
   }
 
-  const jogadores = resumos.filter(f => f.tipo === 'jogador')
-  const npcs = resumos.filter(f => f.tipo === 'npc')
+  const minhaFicha = resumos.find(f => f.tipo === 'jogador') || resumos[0]
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', padding: '32px 16px' }}>
@@ -59,74 +57,23 @@ export default function FichasPublicas({ mesa, onVoltar, voltarLabel = 'VOLTAR A
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
           {mesa.capaURL && <img src={mesa.capaURL} alt="" style={{ width: 72, height: 72, objectFit: 'cover', border: '1px solid #1a1d35', borderRadius: 2, flexShrink: 0 }} />}
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2, marginBottom: 4 }}>VISAO RESUMIDA</div>
+            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 2, marginBottom: 4 }}>MINHA FICHA RESUMIDA</div>
             <div style={{ fontFamily: 'Cinzel,serif', fontSize: 19, fontWeight: 700, color: '#c8a96e', letterSpacing: 2 }}>{mesa.nome}</div>
-            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', marginTop: 3 }}>FICHAS DE JOGADORES E NPCs</div>
+            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', marginTop: 3 }}>APENAS O RESUMO DA SUA FICHA</div>
           </div>
         </div>
         <button onClick={onVoltar} style={botaoSecundario}>{voltarLabel}</button>
       </div>
 
-      <div style={{ display: 'flex', borderBottom: '1px solid #1a1d35', marginBottom: 20 }}>
-        {[['jogadores', 'JOGADORES'], ['npcs', 'NPCs']].map(([id, label]) => (
-          <button key={id} onClick={() => setAbaPrincipal(id)} style={{
-            background: 'transparent', border: 'none',
-            borderBottom: abaPrincipal === id ? '2px solid #c8a96e' : '2px solid transparent',
-            color: abaPrincipal === id ? '#c8a96e' : '#3a4560',
-            fontFamily: 'Cormorant SC,serif', fontSize: 13, letterSpacing: 2,
-            padding: '10px 20px', cursor: 'pointer'
-          }}>{label}</button>
-        ))}
-      </div>
-
-      {abaPrincipal === 'jogadores' && (
-        jogadores.length === 0 ? (
-          <Vazio>Nenhum jogador criou ficha ainda.</Vazio>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {jogadores.map(f => (
-              <CardFichaResumida
-                key={f.id}
-                ficha={f}
-                onClick={() => { setSelecionada({ tipo: 'jogador', id: f.id }); setAbaVer('geral') }}
-              />
-            ))}
-          </div>
-        )
-      )}
-
-      {abaPrincipal === 'npcs' && (
-        npcs.length === 0 ? (
-          <Vazio>Nenhum NPC criado ainda.</Vazio>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {CATEGORIAS_NPC.map(cat => {
-              const lista = npcs.filter(n => normalizarCategoria(n.categoriaNPC) === cat)
-              if (lista.length === 0) return null
-              const cor = COR_CATEGORIA[cat] || '#5a6580'
-              return (
-                <div key={cat}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <div style={{ width: 14, height: 1, background: cor, opacity: 0.6 }} />
-                    <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 3, color: cor, textTransform: 'uppercase' }}>{cat}</div>
-                    <div style={{ flex: 1, height: 1, background: `linear-gradient(to right,${cor}55,transparent)` }} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {lista.map(npc => (
-                      <CardFichaResumida
-                        key={npc.id}
-                        ficha={npc}
-                        cor={cor}
-                        etiqueta={npc.categoriaNPC || 'NPC'}
-                        onClick={() => { setSelecionada({ tipo: 'npc', id: npc.id }); setAbaVer('geral') }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )
+      {minhaFicha ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <CardFichaResumida
+            ficha={minhaFicha}
+            onClick={() => { setSelecionada({ tipo: 'jogador', id: minhaFicha.id }); setAbaVer('geral') }}
+          />
+        </div>
+      ) : (
+        <Vazio>Nenhum resumo da sua ficha foi encontrado ainda.</Vazio>
       )}
     </div>
   )

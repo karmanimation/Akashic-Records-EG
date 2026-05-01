@@ -250,21 +250,21 @@ export function useFichasMesa(mesaId) {
   return { fichas, loading, liberarFicha, travarFicha, excluirFicha, rejeitarExclusao, salvarManifestacao }
 }
 
-export function useResumosMesa(mesaId) {
+export function useResumosMesa(mesaId, userId) {
   const [resumos, setResumos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (!mesaId) {
+    if (!mesaId || !userId) {
       setResumos([])
       setLoading(false)
       return
     }
     setLoading(true)
     setError(null)
-    return onSnapshot(collection(db, 'mesas', mesaId, 'resumos'), snap => {
-      setResumos(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    return onSnapshot(doc(db, 'mesas', mesaId, 'resumos', userId), snap => {
+      setResumos(snap.exists() ? [{ id: snap.id, ...snap.data() }] : [])
       setLoading(false)
     }, e => {
       setError(e)

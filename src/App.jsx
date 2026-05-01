@@ -60,6 +60,7 @@ if (ehMestre) {
       <Suspense fallback={<Splash texto="CARREGANDO FICHAS..." />}>
         <FichasPublicas
           mesa={mesaSelecionada}
+          userId={user.uid}
           voltarLabel={origemVisualizacao === 'lobby' ? 'VOLTAR AS MESAS' : 'VOLTAR A FICHA'}
           onVoltar={() => {
             setVisualizandoFichas(false)

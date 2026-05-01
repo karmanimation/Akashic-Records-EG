@@ -192,7 +192,7 @@ function MesaCard({ mesa, papel, onEntrar, onAtualizarCapa, onVisualizarFichas }
           {papel === 'JOGADOR' && onVisualizarFichas && (
             <button
               type="button"
-              title="Visualizar fichas da mesa"
+              title="Visualizar resumo da minha ficha"
               onClick={e => {
                 e.stopPropagation()
                 onVisualizarFichas()
