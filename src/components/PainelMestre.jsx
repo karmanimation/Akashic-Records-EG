@@ -1537,7 +1537,6 @@ function EditarNPC({ npc, isNovo, onVoltar, salvarNPC, excluirNPC }) {
       </div>
     </div>
   )
-}
 
 function Splash({ texto }) {
   return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Share Tech Mono,monospace', fontSize: 11, letterSpacing: 3, color: '#3a4560' }}>{texto}</div>
