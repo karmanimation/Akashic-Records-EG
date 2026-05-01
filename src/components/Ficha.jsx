@@ -779,11 +779,18 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                     const val = f.pericias[per] || 0
                     const bonus = manAtivo ? (man.pericias?.[per] || 0) : 0
                     const valEfetivo = val + bonus
+                    const bonusGenese = (GENESES_DATA[f.genese]?.bonusPericias || [])
+                      .some(p => p.toLowerCase() === per.toLowerCase()) ? 2 : 0
                     return (
-                      <div key={per} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 2, transition: 'background 0.15s', background: bonus > 0 ? 'rgba(160,80,220,0.04)' : 'transparent' }}
-                        onMouseEnter={e => e.currentTarget.style.background = bonus > 0 ? 'rgba(160,80,220,0.08)' : 'rgba(200,169,110,0.03)'}
-                        onMouseLeave={e => e.currentTarget.style.background = bonus > 0 ? 'rgba(160,80,220,0.04)' : 'transparent'}>
-                        <span style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: bonus > 0 ? '#b060e0' : val > 0 ? '#c8cdd8' : '#4a5070' }}>{per}</span>
+                      <div key={per} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 2, transition: 'background 0.15s', background: bonus > 0 ? 'rgba(160,80,220,0.04)' : bonusGenese > 0 ? 'rgba(200,169,110,0.03)' : 'transparent' }}
+                        onMouseEnter={e => e.currentTarget.style.background = bonus > 0 ? 'rgba(160,80,220,0.08)' : bonusGenese > 0 ? 'rgba(200,169,110,0.06)' : 'rgba(200,169,110,0.03)'}
+                        onMouseLeave={e => e.currentTarget.style.background = bonus > 0 ? 'rgba(160,80,220,0.04)' : bonusGenese > 0 ? 'rgba(200,169,110,0.03)' : 'transparent'}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: bonus > 0 ? '#b060e0' : (val > 0 || bonusGenese > 0) ? '#c8cdd8' : '#4a5070' }}>{per}</span>
+                          {bonusGenese > 0 && (
+                            <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#c8a96e', background: 'rgba(200,169,110,0.12)', border: '1px solid rgba(200,169,110,0.3)', padding: '1px 5px', borderRadius: 2, letterSpacing: 1 }}>GÊNESE +{bonusGenese}</span>
+                          )}
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <button onClick={() => setPericia(per, val - 1)} disabled={bloq('pericias')} style={{ background: 'transparent', border: '1px solid #1a2030', color: bloq('pericias') ? '#2a2a2a' : '#4a5070', width: 20, height: 20, borderRadius: 2, cursor: bloq('pericias') ? 'not-allowed' : 'pointer', fontSize: 12 }}>−</button>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, minWidth: 44, justifyContent: 'center' }}>
