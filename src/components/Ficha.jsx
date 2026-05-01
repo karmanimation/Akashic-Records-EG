@@ -81,7 +81,7 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
 
   const bloq = (campo) => isBloqueado(ficha, campo)
   const estagio = calcularEstagio(f.focos) // estágio usa focos reais, não efetivos
-  const cargaMax = calcularCargaMax(focosEfetivos.Força)
+  const cargaMax = calcularCargaMax(focosEfetivos.Força) + (f.bolsaAtiva ? 3 : 0)
   const pesoArmas = (f.armas || []).reduce((t, a) => {
     const pesoBase = Number(a.espaco) || 0
     const pesoMunicao = a.tipoMunicao === 'Pesada' ? (Number(a.qtdMunicaoPesada) || 0) : 0
@@ -1003,6 +1003,15 @@ export default function Ficha({ ficha, setFicha, salvar, salvando, ultimoSalvo, 
                     <button onClick={() => remItem(item.id)} style={{ background: 'transparent', border: '1px solid #2a1a1a', color: '#6a2020', width: 32, height: 32, borderRadius: 2, cursor: 'pointer', fontSize: 14 }}>✕</button>
                   </div>
                 ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: f.bolsaAtiva ? 'rgba(200,169,110,0.08)' : 'transparent', border: `1px solid ${f.bolsaAtiva ? 'rgba(200,169,110,0.35)' : '#1a2035'}`, borderRadius: 2, marginBottom: 10, transition: 'all 0.2s' }}>
+                <div>
+                  <div style={{ fontFamily: 'Cinzel,serif', fontSize: 12, color: f.bolsaAtiva ? '#c8a96e' : '#4a5070', letterSpacing: 1 }}>Bolsa</div>
+                  <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#3a4560', letterSpacing: 1, marginTop: 2 }}>+3 de espaço de carga</div>
+                </div>
+                <button onClick={() => set('bolsaAtiva', !f.bolsaAtiva)} style={{ background: f.bolsaAtiva ? 'rgba(200,169,110,0.15)' : 'transparent', border: `1px solid ${f.bolsaAtiva ? '#c8a96e' : '#2a3050'}`, color: f.bolsaAtiva ? '#c8a96e' : '#3a4560', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '6px 14px', borderRadius: 2, cursor: 'pointer', transition: 'all 0.2s' }}>
+                  {f.bolsaAtiva ? '✓ EQUIPADA' : 'EQUIPAR'}
+                </button>
               </div>
               <BtnLink onClick={addItem}>+ ITEM</BtnLink>
             </Painel>
