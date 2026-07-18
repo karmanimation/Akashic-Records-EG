@@ -68,21 +68,32 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
     <div style={{ maxWidth: 860, margin: '0 auto', padding: '32px 16px' }}>
 
       {/* Modal confirmação exclusão */}
-      {confirmandoExclusao && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#0d0e18', border: '1px solid #9a3030', borderRadius: 2, padding: 32, maxWidth: 420, width: '100%' }}>
-            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 16, color: '#c05050', letterSpacing: 2, marginBottom: 12 }}>EXCLUIR FICHA</div>
-            <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: '#8a9ab0', lineHeight: 1.6, marginBottom: 20 }}>
-              O jogador <strong style={{ color: '#c8a96e' }}>{fichas.find(f => f.uid === confirmandoExclusao)?.nome || 'Sem nome'}</strong> solicitou a exclusão de sua ficha.<br /><br />
-              Deseja aprovar e excluir permanentemente?
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => aprovarExclusao(confirmandoExclusao)} style={{ flex: 1, background: 'rgba(154,48,48,0.15)', border: '1px solid #9a3030', color: '#c05050', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>SIM, EXCLUIR</button>
-              <button onClick={() => handleRejeitarExclusao(confirmandoExclusao)} style={{ flex: 1, background: 'transparent', border: '1px solid #2a3050', color: '#6a7090', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>REJEITAR</button>
+      {confirmandoExclusao && (() => {
+        const fichaAlvo = fichas.find(f => f.uid === confirmandoExclusao)
+        const solicitadaPeloJogador = !!fichaAlvo?.solicitandoExclusao
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div style={{ background: '#0d0e18', border: '1px solid #9a3030', borderRadius: 2, padding: 32, maxWidth: 420, width: '100%' }}>
+              <div style={{ fontFamily: 'Cinzel,serif', fontSize: 16, color: '#c05050', letterSpacing: 2, marginBottom: 12 }}>EXCLUIR FICHA</div>
+              <div style={{ fontFamily: 'Crimson Text,serif', fontSize: 15, color: '#8a9ab0', lineHeight: 1.6, marginBottom: 20 }}>
+                {solicitadaPeloJogador ? (
+                  <>O jogador <strong style={{ color: '#c8a96e' }}>{fichaAlvo?.nome || 'Sem nome'}</strong> solicitou a exclusão de sua ficha.<br /><br />Deseja aprovar e excluir permanentemente?</>
+                ) : (
+                  <>Você está prestes a excluir a ficha de <strong style={{ color: '#c8a96e' }}>{fichaAlvo?.nome || 'Sem nome'}</strong> desta mesa.<br /><br />Esta ação é permanente e não pode ser desfeita.</>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => aprovarExclusao(confirmandoExclusao)} style={{ flex: 1, background: 'rgba(154,48,48,0.15)', border: '1px solid #9a3030', color: '#c05050', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: 2, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>SIM, EXCLUIR</button>
+                {solicitadaPeloJogador ? (
+                  <button onClick={() => handleRejeitarExclusao(confirmandoExclusao)} style={{ flex: 1, background: 'transparent', border: '1px solid #2a3050', color: '#6a7090', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>REJEITAR</button>
+                ) : (
+                  <button onClick={() => setConfirmandoExclusao(null)} style={{ flex: 1, background: 'transparent', border: '1px solid #2a3050', color: '#6a7090', fontFamily: 'Share Tech Mono,monospace', fontSize: 10, letterSpacing: 1, padding: '10px', borderRadius: 2, cursor: 'pointer' }}>CANCELAR</button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, marginBottom: 20 }}>
@@ -168,7 +179,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {fichas.filter(f => !f.ehNPC).map(f => (
-              <CardFichaResumida key={f.uid} ficha={f} onClick={() => { setConfirmandoExclusao(null); setSelecionada(f.uid); setAbaVer('geral') }} />
+              <CardFichaResumida key={f.uid} ficha={f} onClick={() => { setConfirmandoExclusao(null); setSelecionada(f.uid); setAbaVer('geral') }} onExcluir={() => setConfirmandoExclusao(f.uid)} />
             ))}
           </div>
         )
@@ -220,7 +231,7 @@ export default function PainelMestre({ mesa, onVoltar, excluirMesa }) {
 }
 
 // ─── Card de ficha resumida ───────────────────────────────────
-function CardFichaResumida({ ficha, onClick }) {
+function CardFichaResumida({ ficha, onClick, onExcluir }) {
   const [h, setH] = useState(false)
   const vidaAtual = ficha.reservas?.vida?.atual || 0
   const vidaMax = ficha.reservas?.vida?.max || 1
@@ -244,9 +255,20 @@ function CardFichaResumida({ ficha, onClick }) {
             </div>
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#3a4560', letterSpacing: 2 }}>NÍVEL</div>
-          <div style={{ fontFamily: 'Cinzel,serif', fontSize: 24, fontWeight: 900, color: '#4a9aba' }}>{ficha.nivel || 1}</div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 8, color: '#3a4560', letterSpacing: 2 }}>NÍVEL</div>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 24, fontWeight: 900, color: '#4a9aba' }}>{ficha.nivel || 1}</div>
+          </div>
+          {onExcluir && (
+            <button
+              onClick={e => { e.stopPropagation(); onExcluir() }}
+              title="Excluir ficha da mesa"
+              style={{ background: 'transparent', border: '1px solid #3a1a1a', color: '#7a3030', fontSize: 12, lineHeight: 1, padding: '5px 8px', borderRadius: 2, cursor: 'pointer' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(150,30,30,0.12)'; e.currentTarget.style.borderColor = '#8a3030' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#3a1a1a' }}
+            >🗑</button>
+          )}
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -290,6 +312,9 @@ function VisualizarFicha({ fichas, uid, onVoltar, abaVer, setAbaVer, liberarFich
     <div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 16px' }}>
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
         <button onClick={onVoltar} style={{ background: 'transparent', border: '1px solid #2a3050', color: '#4a6080', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '7px 14px', borderRadius: 2, cursor: 'pointer' }}>← VOLTAR À LISTA</button>
+        {!ficha.solicitandoExclusao && (
+          <button onClick={() => setConfirmando(true)} style={{ background: 'transparent', border: '1px solid #3a1a1a', color: '#7a3030', fontFamily: 'Share Tech Mono,monospace', fontSize: 9, letterSpacing: 1, padding: '7px 14px', borderRadius: 2, cursor: 'pointer', marginLeft: 'auto' }}>🗑 EXCLUIR FICHA</button>
+        )}
         {ficha.solicitandoExclusao && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'rgba(154,48,48,0.08)', border: '1px solid rgba(154,48,48,0.4)', borderRadius: 2, padding: '6px 12px' }}>
             <span style={{ fontFamily: 'Share Tech Mono,monospace', fontSize: 9, color: '#c05050' }}>🗑 SOLICITOU EXCLUSÃO</span>

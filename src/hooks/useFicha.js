@@ -219,10 +219,11 @@ export function useFichasMesa(mesaId) {
     }
   }, [mesaId])
 
-  // Mestre exclui ficha
+  // Mestre exclui ficha (por solicitação do jogador ou por iniciativa própria)
   const excluirFicha = useCallback(async (uid) => {
     if (!mesaId || !uid) return
     await deleteDoc(doc(db, 'mesas', mesaId, 'fichas', uid))
+    await deleteDoc(doc(db, 'mesas', mesaId, 'resumos', uid))
   }, [mesaId])
 
   // Mestre rejeita exclusão
